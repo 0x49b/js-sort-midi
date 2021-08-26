@@ -30,6 +30,7 @@
 <button id="bubblesortbutton">BubbleSort</button>
 <button id="mixbutton">mix</button>
 <button id="stopbutton">stop</button>
+<input type="number" id="elements" value="120">
 
 <div class="outer">
     <div id="bars" class="bars"></div>
@@ -75,6 +76,7 @@
     let bubblesortbutton = document.getElementById("bubblesortbutton")
     let mixbutton = document.getElementById("mixbutton")
     let stopbutton = document.getElementById("stopbutton")
+    let elements = document.getElementById("elements")
 
     function checkButtons(barsMixed, mixbutton, buttons) {
         if (barsMixed) {
@@ -124,6 +126,14 @@
         document.getElementById("console").value = ""
         checkButtons(barsMixed, mixbutton, [bubblesortbutton])
         mixBars(numbers)
+    })
+
+    elements.addEventListener('change', (e) => {
+
+        console.log(elements.value)
+        numbers = []
+        numbers = [...Array(elements.value).keys()]
+        printBars("bars", numbers)
     })
 
     /* todo do it right
