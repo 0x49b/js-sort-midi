@@ -108,65 +108,56 @@ class Sort {
 }
 
 
-class QuickSort extends Sort {
-    /**
-     * @param {*[]} originalArray
-     * @return {*[]}
-     */
+class InsertionSort extends Sort {
     sort(originalArray) {
-        // Clone original array to prevent it from modification.
         const array = [...originalArray];
 
-        // If array has less than or equal to one elements then it is already sorted.
-        if (array.length <= 1) {
-            return array;
-        }
-
-        // Init left and right arrays.
-        const leftArray = [];
-        const rightArray = [];
-
-        // Take the first element of array as a pivot.
-        const pivotElement = array.shift();
-        const centerArray = [pivotElement];
-
-        // Split all array elements between left, center and right arrays.
-        while (array.length) {
-            const currentElement = array.shift();
+        // Go through all array elements...
+        for (let i = 1; i < array.length; i += 1) {
+            let currentIndex = i;
 
             // Call visiting callback.
-            this.callbacks.visitingCallback(currentElement);
+            this.callbacks.visitingCallback(array[i]);
 
+            // Check if previous element is greater than current element.
+            // If so, swap the two elements.
+            while (
+                array[currentIndex - 1] !== undefined
+                && this.comparator.lessThan(array[currentIndex], array[currentIndex - 1])
+                ) {
+                // Call visiting callback.
+                this.callbacks.visitingCallback(array[currentIndex - 1]);
 
+                // Swap the elements.
+                [
+                    array[currentIndex - 1],
+                    array[currentIndex],
+                ] = [
+                    array[currentIndex],
+                    array[currentIndex - 1],
+                ];
 
-            if (this.comparator.equal(currentElement, pivotElement)) {
-                centerArray.push(currentElement);
-            } else if (this.comparator.lessThan(currentElement, pivotElement)) {
-                leftArray.push(currentElement);
-            } else {
-                rightArray.push(currentElement);
-                let o = {array:leftArray.concat(centerArray, rightArray), swap:"swapped \n", finished:false}
+                let o = {
+                    array: array,
+                    swap: "swapped " + array[currentIndex - 1] + " with " + array[currentIndex] + "\n",
+                    swapElements: [array[currentIndex - 1], array[currentIndex]],
+                    finished: false
+                }
                 self.postMessage(o)
+
+                // Shift current index left.
+                currentIndex -= 1;
             }
-
-
-
         }
 
-        // Sort left and right arrays.
-        const leftArraySorted = this.sort(leftArray);
-        const rightArraySorted = this.sort(rightArray);
-
-        let o = {array:leftArraySorted.concat(centerArray, rightArraySorted), swap:"swapped \n", finished:false}
-        self.postMessage(o)
-        // Let's now join sorted left array with center array and with sorted right array.
-        return leftArraySorted.concat(centerArray, rightArraySorted);
+        return array;
     }
 }
 
 
-
 self.addEventListener('message', function (e) {
-    var bs = new QuickSort()
+    var bs = new InsertionSort()
     var bsdata = bs.sort(e.data)
+    let o = {array: bsdata, swap: "finished\n", swapElements: [], finished: true}
+    self.postMessage(o)
 })

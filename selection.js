@@ -107,66 +107,56 @@ class Sort {
     }
 }
 
-
-class QuickSort extends Sort {
-    /**
-     * @param {*[]} originalArray
-     * @return {*[]}
-     */
+class SelectionSort extends Sort {
     sort(originalArray) {
-        // Clone original array to prevent it from modification.
+        // Clone original array to prevent its modification.
         const array = [...originalArray];
 
-        // If array has less than or equal to one elements then it is already sorted.
-        if (array.length <= 1) {
-            return array;
-        }
-
-        // Init left and right arrays.
-        const leftArray = [];
-        const rightArray = [];
-
-        // Take the first element of array as a pivot.
-        const pivotElement = array.shift();
-        const centerArray = [pivotElement];
-
-        // Split all array elements between left, center and right arrays.
-        while (array.length) {
-            const currentElement = array.shift();
+        for (let i = 0; i < array.length - 1; i += 1) {
+            let minIndex = i;
 
             // Call visiting callback.
-            this.callbacks.visitingCallback(currentElement);
+            this.callbacks.visitingCallback(array[i]);
 
+            // Find minimum element in the rest of array.
+            for (let j = i + 1; j < array.length; j += 1) {
+                // Call visiting callback.
+                this.callbacks.visitingCallback(array[j]);
 
-
-            if (this.comparator.equal(currentElement, pivotElement)) {
-                centerArray.push(currentElement);
-            } else if (this.comparator.lessThan(currentElement, pivotElement)) {
-                leftArray.push(currentElement);
-            } else {
-                rightArray.push(currentElement);
-                let o = {array:leftArray.concat(centerArray, rightArray), swap:"swapped \n", finished:false}
-                self.postMessage(o)
+                if (this.comparator.lessThan(array[j], array[minIndex])) {
+                    minIndex = j;
+                }
             }
 
-
-
+            // If new minimum element has been found then swap it with current i-th element.
+            if (minIndex !== i) {
+                [array[i], array[minIndex]] = [array[minIndex], array[i]];
+                let o = {
+                    array: array,
+                    swap: "swapped " + array[i] + " with " + array[minIndex] + "\n",
+                    swapElements: [array[i], array[minIndex]],
+                    finished: false
+                }
+                self.postMessage(o)
+            }
         }
 
-        // Sort left and right arrays.
-        const leftArraySorted = this.sort(leftArray);
-        const rightArraySorted = this.sort(rightArray);
-
-        let o = {array:leftArraySorted.concat(centerArray, rightArraySorted), swap:"swapped \n", finished:false}
+        let o = {
+            array: array,
+            swap: "swapped \n",
+            swapElements: [array[i], array[minIndex]],
+            finished: false
+        }
         self.postMessage(o)
-        // Let's now join sorted left array with center array and with sorted right array.
-        return leftArraySorted.concat(centerArray, rightArraySorted);
+
+        return array;
     }
 }
 
 
-
 self.addEventListener('message', function (e) {
-    var bs = new QuickSort()
+    var bs = new SelectionSort()
     var bsdata = bs.sort(e.data)
+    let o = {array: bsdata, swap: "finished\n", swapElements: [], finished: true}
+    self.postMessage(o)
 })

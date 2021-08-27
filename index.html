@@ -20,21 +20,43 @@
         }
 
         .console {
-            width: 1440px;
+            width: 700px;
             height: 300px;
+            resize: none;
+            font-family: Consolas, Menlo, monospace;
+            background-color: #1e272e;
+            color: #d2dae2;
         }
     </style>
 </head>
 <body>
 
-<button id="bubblesortbutton">BubbleSort</button>
-<button id="mixbutton">mix</button>
-<button id="stopbutton">stop</button>
-<input type="number" id="elements" value="120">
+<button id="bubblesortButton">BubbleSort</button>
+<button id="selectionsortButton">SelectionSort</button>
+<button id="insertionsortButton">InsertionSort</button>
+<button id="shellsortButton">ShellSort</button>
+
+<button id="mixButton">mix</button>
+
+<label for="elements">Elements</label>
+<input type="number" id="elements" value="360" max="360" min="10">
+
+<label for="rangeElements"></label>
+<input type="range" min="10" max="360" value="360" id="rangeElements">
+
+<label for="soundCheckbox">Sound</label>
+<input type="checkbox" id="soundCheckbox" checked>
+
+<button id="resetButton">Reset</button>
+
 
 <div class="outer">
     <div id="bars" class="bars"></div>
-    <textarea id="console" class="console"></textarea>
+    <label for="console"></label>
+    <textarea id="console" class="console">
+        bola bola
+        bola bola
+    </textarea>
 </div>
 
 
@@ -43,12 +65,29 @@
 
 <script type="module">
 
+    const startElements = 100
 
-    let numbers = [...Array(120).keys()]
+    let numbers = [...Array(startElements).keys()]
     let barsMixed = false;
+    let bubblesortButton = document.getElementById("bubblesortButton")
+    let selectionsortButton = document.getElementById("selectionsortButton")
+    let insertionsortButton = document.getElementById("insertionsortButton")
+    let shellsortButton = document.getElementById("shellsortButton")
+    let resetButton = document.getElementById("resetButton")
 
-    var worker = new Worker("bubble.js")
 
+    let mixButton = document.getElementById("mixButton")
+    let elements = document.getElementById("elements")
+    let rangeElements = document.getElementById("rangeElements")
+    let soundCheckbox = document.getElementById("soundCheckbox")
+
+    const bubbleWorker = new Worker("bubble.js");
+    const selectionWorker = new Worker("selection.js")
+    const insertionWorker = new Worker("insertion.js")
+    const shellWorker = new Worker("shell.js")
+
+    elements.value = startElements
+    rangeElements.value = startElements
 
     async function printBars(el, arr) {
         const container = document.getElementById(el)
@@ -69,24 +108,23 @@
 
     async function mixBars(arr) {
         arr = arr.sort(() => Math.random() - 0.5)
-        printBars("bars", arr)
+        await printBars("bars", arr)
     }
 
-
-    let bubblesortbutton = document.getElementById("bubblesortbutton")
-    let mixbutton = document.getElementById("mixbutton")
-    let stopbutton = document.getElementById("stopbutton")
-    let elements = document.getElementById("elements")
 
     function checkButtons(barsMixed, mixbutton, buttons) {
         if (barsMixed) {
             mixbutton.disabled = true
+            elements.disabled = true
+            rangeElements.disabled = true
             buttons.forEach((b) => {
                 b.disabled = false
             })
 
         } else {
             mixbutton.disabled = false
+            elements.disabled = false
+            rangeElements.disabled = false
             buttons.forEach((b) => {
                 b.disabled = true
             })
@@ -95,58 +133,130 @@
 
     }
 
-    function workerFunction(e) {
+    var context = new AudioContext()
+    var o = context.createOscillator()
+    var finished = false
+
+    function playSound(elem) {
+
+        let tone = 500
+
+        elem.forEach((e) => {
+            tone += e
+        })
+
+        o.frequency.setTargetAtTime(tone, context.currentTime, 0);
+        o.connect(context.destination);
+
+        o.start(0);
+
+        if (finished) {
+            o.stop()
+            context.resume()
+        }
 
     }
 
-    worker.addEventListener('message', function (e) {
-        //console.log(e.data);
+    function updatePage(e) {
+
         printBars("bars", e.data.array)
         let console = document.getElementById("console")
 
-        if(e.data.finished){
+        if (e.data.finished) {
             console.value += ""
+            finished = e.data.finished
+            o.stop()
         }
-
-
         console.value += e.data.swap
         console.scrollTop = console.scrollHeight;
 
+        playSound(e.data.swapElements)
 
+    }
+
+
+    bubbleWorker.addEventListener('message', (e) => {
+        updatePage(e)
     })
 
-    bubblesortbutton.addEventListener('click', (e) => {
-        worker.postMessage(numbers)
+    selectionWorker.addEventListener('message', (e) => {
+        updatePage(e)
+    })
+
+    insertionWorker.addEventListener('message', (e) => {
+        updatePage(e)
+    })
+
+    shellWorker.addEventListener('message', (e) => {
+        updatePage(e)
+    })
+
+    resetButton.addEventListener('click', () => {
         barsMixed = false
-        checkButtons(barsMixed, mixbutton, [bubblesortbutton])
+        finished = true
+        checkButtons(barsMixed, mixButton, [bubblesortButton, selectionsortButton, insertionsortButton, shellsortButton])
+        changeElementCount()
     })
 
-    mixbutton.addEventListener('click', (e) => {
+    bubblesortButton.addEventListener('click', () => {
+        barsMixed = false
+        finished = false
+        bubbleWorker.postMessage(numbers)
+        checkButtons(barsMixed, mixButton, [bubblesortButton, selectionsortButton, insertionsortButton, shellsortButton])
+    })
+
+    selectionsortButton.addEventListener('click', () => {
+        barsMixed = false
+        finished = false
+        selectionWorker.postMessage(numbers)
+        checkButtons(barsMixed, mixButton, [bubblesortButton, selectionsortButton, insertionsortButton, shellsortButton])
+    })
+
+    insertionsortButton.addEventListener('click', () => {
+        barsMixed = false
+        finished = false
+        insertionWorker.postMessage(numbers)
+        checkButtons(barsMixed, mixButton, [bubblesortButton, selectionsortButton, insertionsortButton, shellsortButton])
+    })
+
+    shellsortButton.addEventListener('click', () => {
+        barsMixed = false
+        finished = false
+        shellWorker.postMessage(numbers)
+        checkButtons(barsMixed, mixButton, [bubblesortButton, selectionsortButton, insertionsortButton, shellsortButton])
+    })
+
+    mixButton.addEventListener('click', () => {
         barsMixed = true
         document.getElementById("console").value = ""
-        checkButtons(barsMixed, mixbutton, [bubblesortbutton])
+        checkButtons(barsMixed, mixButton, [bubblesortButton, selectionsortButton, insertionsortButton, shellsortButton])
         mixBars(numbers)
     })
 
-    elements.addEventListener('change', (e) => {
-
+    elements.addEventListener('change', () => {
+        rangeElements.value = elements.value
         console.log(elements.value)
+        changeElementCount()
+    })
+
+    rangeElements.addEventListener('input', () => {
+        elements.value = rangeElements.value
+        console.log(rangeElements.value)
+        changeElementCount()
+    })
+
+
+    function changeElementCount() {
         numbers = []
-        numbers = [...Array(elements.value).keys()]
+        numbers = [...Array(parseInt(elements.value)).keys()]
         printBars("bars", numbers)
-    })
-
-    /* todo do it right
-    stopbutton.addEventListener('click', (e) => {
-        worker.terminate()
-        worker = new Worker('bubble.js')
-    })
-
-     */
+        barsMixed = false
+        checkButtons(barsMixed, mixButton, [bubblesortButton, selectionsortButton, insertionsortButton, shellsortButton])
+    }
 
 
     printBars("bars", numbers)
-    checkButtons(barsMixed, mixbutton, [bubblesortbutton])
+    checkButtons(barsMixed, mixButton, [bubblesortButton, selectionsortButton, insertionsortButton, shellsortButton])
     document.getElementById("console").value = ""
 
 </script>

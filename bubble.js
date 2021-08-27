@@ -133,19 +133,12 @@ class BubbleSort extends Sort {
                 if (this.comparator.lessThan(array[j + 1], array[j])) {
                     [array[j], array[j + 1]] = [array[j + 1], array[j]];
 
-                    /*let txtarr = document.getElementById("console")
-
-                    txtarr.value += "swapped " + array[j] + " with " + array[j + 1] + "\n"
-
-                    // make animated
-                    let oldelem = document.getElementById("bars-" + array[j])
-                    let newelem = document.getElementById("bars-" + array[j + 1])
-
-                    console.log(oldelem.id)
-                    newelem.parentNode.insertBefore(oldelem, newelem.parentNode.firstChild)
-                    oldelem.parentNode.insertBefore(newelem, oldelem.parentNode.firstChild)
-*/
-                    let o = {array:array, swap:"swapped " + array[j] + " with " + array[j + 1] + "\n", finished:false}
+                    let o = {
+                        array: array,
+                        swap: "swapped " + array[j] + " with " + array[j + 1] + "\n",
+                        swapElements: [array[j], array[j + 1]],
+                        finished: false
+                    }
                     self.postMessage(o)
                     // Register the swap.
                     swapped = true;
@@ -154,15 +147,10 @@ class BubbleSort extends Sort {
             // If there were no swaps then array is already sorted and there is
             // no need to proceed.
             if (!swapped) {
-                //let o = {array:array, swap: "no"}
-                //    self.postMessage(o)
                 return array;
             }
 
         }
-
-        //let o = {array:array, swap: "no"}
-        //self.postMessage(o)
         return array;
     }
 }
@@ -171,6 +159,6 @@ class BubbleSort extends Sort {
 self.addEventListener('message', function (e) {
     var bs = new BubbleSort()
     var bsdata = bs.sort(e.data)
-    let o = {array:bsdata, swap:"finished\n", finished:true}
+    let o = {array: bsdata, swap: "finished\n", swapElements: [], finished: true}
     self.postMessage(o)
 })

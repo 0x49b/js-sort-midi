@@ -107,66 +107,60 @@ class Sort {
     }
 }
 
-
-class QuickSort extends Sort {
-    /**
-     * @param {*[]} originalArray
-     * @return {*[]}
-     */
+class ShellSort extends Sort {
     sort(originalArray) {
-        // Clone original array to prevent it from modification.
+        // Prevent original array from mutations.
         const array = [...originalArray];
 
-        // If array has less than or equal to one elements then it is already sorted.
-        if (array.length <= 1) {
-            return array;
-        }
+        // Define a gap distance.
+        let gap = Math.floor(array.length / 2);
 
-        // Init left and right arrays.
-        const leftArray = [];
-        const rightArray = [];
+        // Until gap is bigger then zero do elements comparisons and swaps.
+        while (gap > 0) {
+            // Go and compare all distant element pairs.
+            for (let i = 0; i < (array.length - gap); i += 1) {
+                let currentIndex = i;
+                let gapShiftedIndex = i + gap;
 
-        // Take the first element of array as a pivot.
-        const pivotElement = array.shift();
-        const centerArray = [pivotElement];
+                while (currentIndex >= 0) {
+                    // Call visiting callback.
+                    this.callbacks.visitingCallback(array[currentIndex]);
 
-        // Split all array elements between left, center and right arrays.
-        while (array.length) {
-            const currentElement = array.shift();
+                    // Compare and swap array elements if needed.
+                    if (this.comparator.lessThan(array[gapShiftedIndex], array[currentIndex])) {
+                        const tmp = array[currentIndex];
+                        array[currentIndex] = array[gapShiftedIndex];
+                        array[gapShiftedIndex] = tmp;
 
-            // Call visiting callback.
-            this.callbacks.visitingCallback(currentElement);
+                        let o = {
+                            array: array,
+                            swap: "swapped " + array[currentIndex] + " with " + array[gapShiftedIndex] + "\n",
+                            swapElements: [array[currentIndex], array[gapShiftedIndex]],
+                            finished: false
+                        }
+                        self.postMessage(o)
+                    }
+
+                    gapShiftedIndex = currentIndex;
+                    currentIndex -= gap;
 
 
-
-            if (this.comparator.equal(currentElement, pivotElement)) {
-                centerArray.push(currentElement);
-            } else if (this.comparator.lessThan(currentElement, pivotElement)) {
-                leftArray.push(currentElement);
-            } else {
-                rightArray.push(currentElement);
-                let o = {array:leftArray.concat(centerArray, rightArray), swap:"swapped \n", finished:false}
-                self.postMessage(o)
+                }
             }
 
-
-
+            // Shrink the gap.
+            gap = Math.floor(gap / 2);
         }
 
-        // Sort left and right arrays.
-        const leftArraySorted = this.sort(leftArray);
-        const rightArraySorted = this.sort(rightArray);
-
-        let o = {array:leftArraySorted.concat(centerArray, rightArraySorted), swap:"swapped \n", finished:false}
-        self.postMessage(o)
-        // Let's now join sorted left array with center array and with sorted right array.
-        return leftArraySorted.concat(centerArray, rightArraySorted);
+        // Return sorted copy of an original array.
+        return array;
     }
 }
 
 
-
 self.addEventListener('message', function (e) {
-    var bs = new QuickSort()
+    var bs = new ShellSort()
     var bsdata = bs.sort(e.data)
+    let o = {array: bsdata, swap: "finished\n", swapElements: [], finished: true}
+    self.postMessage(o)
 })
