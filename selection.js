@@ -145,7 +145,7 @@ class SelectionSort extends Sort {
             array: array,
             swap: "swapped \n",
             swapElements: [array[i], array[minIndex]],
-            finished: false
+            finished: true
         }
         self.postMessage(o)
 

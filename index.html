@@ -3,10 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <title>JS - Sort Midi</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,400;0,900;1,400;1,900&display=swap"
+          rel="stylesheet">
     <style>
+        body {
+            font-family: Poppins, sans-serif;
+            font-weight: 400;
+            color: #1e272e;
+        }
+
+        h1 {
+            width: 100%;
+            text-align: center;
+            font-family: Poppins, sans-serif;
+            font-weight: 900;
+            color: #1e272e;
+            font-size: 5rem;
+            padding:0;
+            margin:0;
+        }
+
         .outer {
-            width: 90%;
-            margin: auto;
+            width: 98%;
+            margin-left: 10px;
+            margin-right: 10px;
         }
 
         .bars {
@@ -14,12 +36,12 @@
         }
 
         .bar {
-            background-color: hsl(0, 33%, 19%);
+            background-color: #1e272e;
             display: inline-block;
             margin: 1px;
         }
 
-        .console {
+        .swapConsole {
             width: 700px;
             height: 300px;
             resize: none;
@@ -27,37 +49,86 @@
             background-color: #1e272e;
             color: #d2dae2;
         }
+
+        .swapText {
+            width: 100%;
+            text-align: center;
+        }
+
+        #soundCheckbox {
+            display: none
+        }
+
+        button {
+            background-color: #485460;
+            border: none;
+            padding: .8rem;
+            color: #d2dae2;
+            font-family: Poppins, sans-serif;
+            border-radius: 4px;
+        }
+
+        button:hover {
+            background-color: #808e9b;
+            color: #1e272e;
+        }
+
+        button:disabled {
+            background-color: #d2dae2;
+            color: #1e272e;
+        }
+
+        .topbar {
+            width: 100%;
+            text-align: center;
+        }
+
+        .controls {
+            width: 100%;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+        .topcontrol{
+            margin-bottom: .5rem;
+        }
     </style>
 </head>
 <body>
 
-<button id="bubblesortButton">BubbleSort</button>
-<button id="selectionsortButton">SelectionSort</button>
-<button id="insertionsortButton">InsertionSort</button>
-<button id="shellsortButton">ShellSort</button>
+<h1>Sound of sorting in JavaScript</h1>
 
-<button id="mixButton">mix</button>
+<div class="topbar">
+    <div class="controls">
 
-<label for="elements">Elements</label>
-<input type="number" id="elements" value="360" max="360" min="10">
+        <div class="topcontrol">
+            <button id="mixButton">Shuffle</button>
+            <label for="elements">Elements</label>
+            <input type="number" id="elements" max="560" min="10">
+            <label for="rangeElements"></label>
+            <input type="range" min="10" max="560" id="rangeElements">
+            <button id="resetButton">Reset</button>
 
-<label for="rangeElements"></label>
-<input type="range" min="10" max="360" value="360" id="rangeElements">
+            <!--label for="soundCheckbox">Sound</label>
+            <input type="checkbox" id="soundCheckbox" checked-->
+        </div>
+        </br>
+        <div class="bottomcontrol">
+            <button id="bubblesortButton">BubbleSort</button>
+            <button id="selectionsortButton">SelectionSort</button>
+            <button id="insertionsortButton">InsertionSort</button>
+            <button id="shellsortButton">ShellSort</button>
+        </div>
+    </div>
+    <br/>
 
-<label for="soundCheckbox">Sound</label>
-<input type="checkbox" id="soundCheckbox" checked>
-
-<button id="resetButton">Reset</button>
-
+    <span>Swaps: <span id="swapsCount">0</span></span>
+</div>
 
 <div class="outer">
     <div id="bars" class="bars"></div>
-    <label for="console"></label>
-    <textarea id="console" class="console">
-        bola bola
-        bola bola
-    </textarea>
 </div>
+
+<div id="swapText" class="swapText">finished</div>
 
 
 <!-- https://medium.com/swinginc/playing-with-midi-in-javascript-b6999f2913c3 -->
@@ -66,6 +137,7 @@
 <script type="module">
 
     const startElements = 100
+    let swapsCounter = 0
 
     let numbers = [...Array(startElements).keys()]
     let barsMixed = false;
@@ -75,31 +147,32 @@
     let shellsortButton = document.getElementById("shellsortButton")
     let resetButton = document.getElementById("resetButton")
 
-
     let mixButton = document.getElementById("mixButton")
     let elements = document.getElementById("elements")
     let rangeElements = document.getElementById("rangeElements")
     let soundCheckbox = document.getElementById("soundCheckbox")
+    let swapsCounterText = document.getElementById("swapsCount")
+    let swapText = document.getElementById("swapText")
 
     const bubbleWorker = new Worker("bubble.js");
     const selectionWorker = new Worker("selection.js")
     const insertionWorker = new Worker("insertion.js")
     const shellWorker = new Worker("shell.js")
 
+
     elements.value = startElements
     rangeElements.value = startElements
+    swapsCounterText.innerText = swapsCounter
 
     async function printBars(el, arr) {
         const container = document.getElementById(el)
-
         container.innerHTML = ""
-
-
         for (let n = 0; n < arr.length; n++) {
             let bar = document.createElement("div")
             bar.style.width = 720 / arr.length + "px"
             bar.style.height = arr[n] + 5 + "px";
-            bar.style.backgroundColor = "hsl(" + arr[n] + ",100%,50%)";
+            // bar.style.backgroundColor = "hsl(" + arr[n] + ",100%,50%)";
+            bar.style.backgroundColor = "#1e272e"
             bar.id = el + "-" + arr[n]
             bar.setAttribute('class', 'bar')
             container.append(bar)
@@ -111,7 +184,6 @@
         await printBars("bars", arr)
     }
 
-
     function checkButtons(barsMixed, mixbutton, buttons) {
         if (barsMixed) {
             mixbutton.disabled = true
@@ -120,7 +192,6 @@
             buttons.forEach((b) => {
                 b.disabled = false
             })
-
         } else {
             mixbutton.disabled = false
             elements.disabled = false
@@ -128,50 +199,68 @@
             buttons.forEach((b) => {
                 b.disabled = true
             })
-            document.getElementById("console").value = ""
         }
-
     }
 
-    var context = new AudioContext()
-    var o = context.createOscillator()
-    var finished = false
+
+    let finished = false;
+    const context = new AudioContext();
+    const o = context.createOscillator();
 
     function playSound(elem) {
+        if (soundCheckbox.checked) {
+            let tone = 500
+            elem.forEach((e) => {
+                tone += e
+            })
+            o.frequency.setTargetAtTime(tone, context.currentTime, 0);
+            o.connect(context.destination);
+            o.start(0);
+        }
+    }
+
+    function finishedAnimation() {
+
+        console.log("playing finish animation")
 
         let tone = 500
+        let i = 0
 
-        elem.forEach((e) => {
-            tone += e
+        numbers.forEach((e) => {
+            tone += i
+            o.frequency.setTargetAtTime(tone, context.currentTime, 1);
+            o.connect(context.destination);
+            o.start(0);
+
+            console.log(tone)
+
+            //e.style.backgroundColor = "hsl(" + arr[n] + ",100%,50%)";
+            e.style.backgroundColor = "red"
+            printBars("bars", numbers)
+            i++
         })
-
-        o.frequency.setTargetAtTime(tone, context.currentTime, 0);
-        o.connect(context.destination);
-
-        o.start(0);
-
-        if (finished) {
-            o.stop()
-            context.resume()
-        }
-
     }
 
     function updatePage(e) {
-
         printBars("bars", e.data.array)
-        let console = document.getElementById("console")
+        let swapConsole = document.getElementById("swapConsole")
+        swapsCounter++
+        swapsCounterText.innerText = swapsCounter
+
+        swapText.innerText = e.data.swap
+
+        console.log(e.data.finished)
 
         if (e.data.finished) {
-            console.value += ""
+            console.log(e.data.finished)
+            swapConsole.value += ""
             finished = e.data.finished
-            o.stop()
         }
-        console.value += e.data.swap
-        console.scrollTop = console.scrollHeight;
+        swapConsole.value += e.data.swap
+        swapConsole.scrollTop = swapConsole.scrollHeight;
 
-        playSound(e.data.swapElements)
-
+        // playSound(e.data.swapElements)
+        checkButtons(barsMixed, mixButton, [bubblesortButton, selectionsortButton, insertionsortButton, shellsortButton])
     }
 
 
@@ -196,6 +285,11 @@
         finished = true
         checkButtons(barsMixed, mixButton, [bubblesortButton, selectionsortButton, insertionsortButton, shellsortButton])
         changeElementCount()
+        bubbleWorker.terminate()
+        selectionWorker.terminate()
+        insertionWorker.terminate()
+        shellWorker.terminate()
+        document.location.reload()
     })
 
     bubblesortButton.addEventListener('click', () => {
@@ -228,7 +322,8 @@
 
     mixButton.addEventListener('click', () => {
         barsMixed = true
-        document.getElementById("console").value = ""
+        swapsCounter = 0
+        swapsCounterText.innerText = swapsCounter
         checkButtons(barsMixed, mixButton, [bubblesortButton, selectionsortButton, insertionsortButton, shellsortButton])
         mixBars(numbers)
     })
@@ -257,7 +352,6 @@
 
     printBars("bars", numbers)
     checkButtons(barsMixed, mixButton, [bubblesortButton, selectionsortButton, insertionsortButton, shellsortButton])
-    document.getElementById("console").value = ""
 
 </script>
 </body>
