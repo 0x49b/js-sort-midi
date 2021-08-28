@@ -21,8 +21,8 @@
             font-weight: 900;
             color: #1e272e;
             font-size: 5rem;
-            padding:0;
-            margin:0;
+            padding: 0;
+            margin: 0;
         }
 
         .outer {
@@ -88,7 +88,8 @@
             text-align: center;
             margin-bottom: 1rem;
         }
-        .topcontrol{
+
+        .topcontrol {
             margin-bottom: .5rem;
         }
     </style>
@@ -136,7 +137,7 @@
 
 <script type="module">
 
-    const startElements = 100
+    let startElements = getFromLocalStorage()
     let swapsCounter = 0
 
     let numbers = [...Array(startElements).keys()]
@@ -328,17 +329,36 @@
         mixBars(numbers)
     })
 
-    elements.addEventListener('change', () => {
+    elements.addEventListener('input', () => {
         rangeElements.value = elements.value
         console.log(elements.value)
         changeElementCount()
+        addToLocalStorage(elements.value)
     })
 
     rangeElements.addEventListener('input', () => {
         elements.value = rangeElements.value
         console.log(rangeElements.value)
         changeElementCount()
+        addToLocalStorage(elements.value)
     })
+
+
+    function addToLocalStorage(elem) {
+        localStorage.setItem('elements', elem)
+    }
+
+    function getFromLocalStorage() {
+        let elem = localStorage.getItem('elements')
+
+        console.log(elem)
+
+        if (elem === null) {
+            elem = 150
+        }
+
+        return parseInt(elem)
+    }
 
 
     function changeElementCount() {
@@ -350,8 +370,9 @@
     }
 
 
-    printBars("bars", numbers)
     checkButtons(barsMixed, mixButton, [bubblesortButton, selectionsortButton, insertionsortButton, shellsortButton])
+    elements.value = getFromLocalStorage()
+    printBars("bars", numbers)
 
 </script>
 </body>
