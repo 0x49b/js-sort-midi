@@ -55,10 +55,6 @@
             text-align: center;
         }
 
-        #soundCheckbox {
-            display: none
-        }
-
         button {
             background-color: #485460;
             border: none;
@@ -109,8 +105,8 @@
             <input type="range" min="10" max="560" id="rangeElements">
             <button id="resetButton">Reset</button>
 
-            <!--label for="soundCheckbox">Sound</label>
-            <input type="checkbox" id="soundCheckbox" checked-->
+            <label for="soundCheckbox">Sound</label>
+            <input type="checkbox" id="soundCheckbox" checked>
         </div>
         </br>
         <div class="bottomcontrol">
@@ -205,19 +201,49 @@
 
 
     let finished = false;
-    const context = new AudioContext();
-    const o = context.createOscillator();
+
+    //if you have another AudioContext class use that one, as some browsers have a limit
+    var audioCtx = new (window.AudioContext || window.webkitAudioContext || window.audioContext);
+
+    //All arguments are optional:
+
+    //duration of the tone in milliseconds. Default is 500
+    //frequency of the tone in hertz. default is 440
+    //volume of the tone. Default is 1, off is 0.
+    //type of tone. Possible values are sine, square, sawtooth, triangle, and custom. Default is sine.
+    //callback to use on end of tone
+    function beep(duration, frequency, volume, type, callback) {
+        var oscillator = audioCtx.createOscillator();
+        var gainNode = audioCtx.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        if (volume) {
+            gainNode.gain.value = volume;
+        }
+        if (frequency) {
+            oscillator.frequency.value = frequency;
+        }
+        if (type) {
+            oscillator.type = type;
+        }
+        if (callback) {
+            oscillator.onended = callback;
+        }
+
+        oscillator.start(audioCtx.currentTime);
+        oscillator.stop(audioCtx.currentTime + ((duration || 500) / 1000));
+    };
 
     function playSound(elem) {
-        if (soundCheckbox.checked) {
-            let tone = 500
-            elem.forEach((e) => {
-                tone += e
-            })
-            o.frequency.setTargetAtTime(tone, context.currentTime, 0);
-            o.connect(context.destination);
-            o.start(0);
-        }
+
+        let tone = 500
+        elem.forEach((e) => {
+            tone += e
+        })
+
+        beep(tone)
     }
 
     function finishedAnimation() {
@@ -260,7 +286,7 @@
         swapConsole.value += e.data.swap
         swapConsole.scrollTop = swapConsole.scrollHeight;
 
-        // playSound(e.data.swapElements)
+        playSound(e.data.swapElements)
         checkButtons(barsMixed, mixButton, [bubblesortButton, selectionsortButton, insertionsortButton, shellsortButton])
     }
 
