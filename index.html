@@ -105,8 +105,12 @@
             <input type="range" min="10" max="560" id="rangeElements">
             <button id="resetButton">Reset</button>
 
-            <label for="soundCheckbox">Sound</label>
-            <input type="checkbox" id="soundCheckbox" checked>
+            <!--label for="soundCheckbox">Sound</label>
+            <input type="checkbox" id="soundCheckbox" checked-->
+        
+            <label for="colorCheckbox">Use Colors</label>
+            <input type="checkbox" id="colorCheckbox" checked>
+
         </div>
         </br>
         <div class="bottomcontrol">
@@ -135,6 +139,7 @@
 
     let startElements = getFromLocalStorage()
     let swapsCounter = 0
+    let colors = true
 
     let numbers = [...Array(startElements).keys()]
     let barsMixed = false;
@@ -143,6 +148,7 @@
     let insertionsortButton = document.getElementById("insertionsortButton")
     let shellsortButton = document.getElementById("shellsortButton")
     let resetButton = document.getElementById("resetButton")
+    let colorCheckbox = document.getElementById("colorCheckbox")
 
     let mixButton = document.getElementById("mixButton")
     let elements = document.getElementById("elements")
@@ -168,8 +174,9 @@
             let bar = document.createElement("div")
             bar.style.width = 720 / arr.length + "px"
             bar.style.height = arr[n] + 5 + "px";
-            // bar.style.backgroundColor = "hsl(" + arr[n] + ",100%,50%)";
-            bar.style.backgroundColor = "#1e272e"
+
+            (colors ? bar.style.backgroundColor = "hsl(" + arr[n] + ",100%,50%)": bar.style.backgroundColor = "#1e272e")
+
             bar.id = el + "-" + arr[n]
             bar.setAttribute('class', 'bar')
             container.append(bar)
@@ -290,6 +297,10 @@
         checkButtons(barsMixed, mixButton, [bubblesortButton, selectionsortButton, insertionsortButton, shellsortButton])
     }
 
+    colorCheckbox.addEventListener('change', (e) => {
+        colors = !colors
+        printBars("bars", numbers)
+    })
 
     bubbleWorker.addEventListener('message', (e) => {
         updatePage(e)
