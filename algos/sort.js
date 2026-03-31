@@ -711,137 +711,6 @@ const BUILTIN_ALGORITHMS = [
 ];
 
 const BUILTIN_BY_ID = new Map(BUILTIN_ALGORITHMS.map((entry) => [entry.id, entry]));
-const MAX_CUSTOM_STEPS = 120000;
-const MAX_CUSTOM_CODE_LENGTH = 20000;
-const FORBIDDEN_CUSTOM_TOKENS = [
-    "self",
-    "globalThis",
-    "importScripts",
-    "Function",
-    "eval",
-    "fetch",
-    "XMLHttpRequest",
-    "Worker",
-    "WebSocket",
-    "postMessage",
-    "onmessage",
-    "indexedDB",
-    "caches",
-    "localStorage",
-    "sessionStorage"
-];
-
-function normalizeNumericArray(value, label) {
-    if (!Array.isArray(value)) {
-        throw new Error(label + " must be an array");
-    }
-    const normalized = value.map((item) => Number(item));
-    for (let i = 0; i < normalized.length; i += 1) {
-        if (!Number.isFinite(normalized[i])) {
-            throw new Error(label + " must contain only finite numbers");
-        }
-    }
-    return normalized;
-}
-
-function getSafeIndex(index, length) {
-    if (!Number.isInteger(index) || index < 0 || index >= length) {
-        throw new Error("Index out of bounds: " + index);
-    }
-    return index;
-}
-
-function checkCustomCodeSafety(code) {
-    if (typeof code !== "string" || code.trim() === "") {
-        throw new Error("Custom algorithm code is empty");
-    }
-    if (code.length > MAX_CUSTOM_CODE_LENGTH) {
-        throw new Error("Custom algorithm is too long");
-    }
-    for (let i = 0; i < FORBIDDEN_CUSTOM_TOKENS.length; i += 1) {
-        const token = FORBIDDEN_CUSTOM_TOKENS[i];
-        const pattern = new RegExp("\\b" + token + "\\b");
-        if (pattern.test(code)) {
-            throw new Error("Forbidden token in custom algorithm: " + token);
-        }
-    }
-}
-
-function emitCustomStep(array, label, indices) {
-    const safeIndices = Array.isArray(indices)
-        ? indices.filter((value) => Number.isInteger(value) && value >= 0 && value < array.length).slice(0, 2)
-        : [];
-    self.postMessage({
-        swap: (label || "CustomSort step") + "\n",
-        swapElements: [],
-        swapIndices: safeIndices,
-        array: [...array],
-        finished: false
-    });
-}
-
-function executeCustomSort(code, originalArray) {
-    checkCustomCodeSafety(code);
-    const array = normalizeNumericArray(originalArray, "Custom sort input");
-    let customStepCount = 0;
-
-    function guardStep() {
-        customStepCount += 1;
-        if (customStepCount > MAX_CUSTOM_STEPS) {
-            throw new Error("Custom algorithm exceeded max step limit (" + MAX_CUSTOM_STEPS + ")");
-        }
-    }
-
-    const api = {
-        get length() {
-            return array.length;
-        },
-        get(index) {
-            return array[getSafeIndex(index, array.length)];
-        },
-        set(index, value) {
-            const safeIndex = getSafeIndex(index, array.length);
-            const numericValue = Number(value);
-            if (!Number.isFinite(numericValue)) {
-                throw new Error("set() requires a finite numeric value");
-            }
-            guardStep();
-            const previous = array[safeIndex];
-            array[safeIndex] = numericValue;
-            emitArray(array, "CustomSort", [previous, numericValue]);
-        },
-        swap(i, j) {
-            guardStep();
-            const a = getSafeIndex(i, array.length);
-            const b = getSafeIndex(j, array.length);
-            swap(array, a, b, "CustomSort");
-        },
-        compare(i, j) {
-            const a = getSafeIndex(i, array.length);
-            const b = getSafeIndex(j, array.length);
-            return array[a] - array[b];
-        },
-        emitStep(label, indices) {
-            guardStep();
-            emitCustomStep(array, label, indices);
-        },
-        getArray() {
-            return [...array];
-        }
-    };
-
-    const runner = new Function("api", "\"use strict\";\n" + code);
-    const result = runner(Object.freeze(api));
-    if (result && typeof result.then === "function") {
-        throw new Error("Custom algorithm must be synchronous");
-    }
-
-    const finalArray = Array.isArray(result) ? normalizeNumericArray(result, "Custom sort result") : array;
-    if (finalArray.length !== originalArray.length) {
-        throw new Error("Custom algorithm must return array with same length");
-    }
-    return finalArray;
-}
 
 function runBuiltInSort(algorithm, originalArray) {
     const selected = BUILTIN_BY_ID.get(algorithm);
@@ -852,38 +721,13 @@ function runBuiltInSort(algorithm, originalArray) {
     return selected.runner(array, selected.label);
 }
 
-function listAlgorithms() {
-    return BUILTIN_ALGORITHMS.map((entry) => ({
-        id: entry.id,
-        label: entry.label,
-        source: entry.runner.toString()
-    }));
-}
-
 self.addEventListener("message", function (e) {
     try {
-        const data = e && e.data ? e.data : {};
-        if (data.type === "listAlgorithms") {
-            self.postMessage({
-                type: "algorithmsList",
-                algorithms: listAlgorithms()
-            });
-            return;
-        }
-
-        const input = Array.isArray(data) ? data : (Array.isArray(data.array) ? data.array : null);
+        const input = Array.isArray(e.data) ? e.data : (e.data && Array.isArray(e.data.array) ? e.data.array : null);
         if (!input) {
             throw new Error("Invalid sort input");
         }
-
-        if (data.type === "custom") {
-            const code = typeof data.code === "string" ? data.code : "";
-            const sortedCustom = executeCustomSort(code, input);
-            self.postMessage({array: sortedCustom, swap: "finished\n", swapElements: [], finished: true});
-            return;
-        }
-
-        const algorithm = typeof data.algorithm === "string" ? data.algorithm : null;
+        const algorithm = e.data && typeof e.data.algorithm === "string" ? e.data.algorithm : null;
         if (!algorithm) {
             throw new Error("Missing algorithm key");
         }
