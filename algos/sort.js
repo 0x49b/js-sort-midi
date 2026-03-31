@@ -197,6 +197,36 @@ function heapSort(array, name) {
     return array;
 }
 
+function heapSortV2(array, name) {
+    function siftDown(start, end) {
+        let root = start;
+        while ((2 * root) + 1 <= end) {
+            let child = (2 * root) + 1;
+            let candidate = root;
+            if (array[candidate] < array[child]) {
+                candidate = child;
+            }
+            if (child + 1 <= end && array[candidate] < array[child + 1]) {
+                candidate = child + 1;
+            }
+            if (candidate === root) {
+                return;
+            }
+            swap(array, root, candidate, name);
+            root = candidate;
+        }
+    }
+
+    for (let start = Math.floor((array.length - 2) / 2); start >= 0; start -= 1) {
+        siftDown(start, array.length - 1);
+    }
+    for (let end = array.length - 1; end > 0; end -= 1) {
+        swap(array, 0, end, name);
+        siftDown(0, end - 1);
+    }
+    return array;
+}
+
 function oddEvenSort(array, name) {
     let sorted = false;
     while (!sorted) {
@@ -284,6 +314,35 @@ function countingLikeSort(array, name) {
             emitArray(array, name, [previous, value]);
             index += 1;
             count -= 1;
+        }
+    }
+    return array;
+}
+
+function pigeonholeSort(array, name) {
+    if (array.length <= 1) {
+        return array;
+    }
+    for (let i = 0; i < array.length; i += 1) {
+        if (!Number.isInteger(array[i])) {
+            throw new Error("PigeonHoleSort requires integer values");
+        }
+    }
+    const min = Math.min(...array);
+    const max = Math.max(...array);
+    const holeCount = (max - min) + 1;
+    const holes = Array.from({length: holeCount}, () => []);
+    for (let i = 0; i < array.length; i += 1) {
+        holes[array[i] - min].push(array[i]);
+    }
+    let out = 0;
+    for (let holeIndex = 0; holeIndex < holes.length; holeIndex += 1) {
+        while (holes[holeIndex].length > 0) {
+            const previous = array[out];
+            const nextValue = holes[holeIndex].shift();
+            array[out] = nextValue;
+            emitArray(array, name, [previous, nextValue]);
+            out += 1;
         }
     }
     return array;
@@ -412,12 +471,186 @@ function timSort(array, name) {
     return array;
 }
 
-function wiggleSort(array, name) {
-    for (let i = 1; i < array.length; i += 1) {
-        const shouldSwap = (i % 2 === 1 && array[i] < array[i - 1]) || (i % 2 === 0 && array[i] > array[i - 1]);
-        if (shouldSwap) {
-            swap(array, i, i - 1, name);
+function introSort(array, name) {
+    const INSERTION_THRESHOLD = 16;
+    const maxDepth = Math.max(1, 2 * Math.floor(Math.log2(Math.max(array.length, 2))));
+
+    function insertionRange(left, right) {
+        for (let i = left + 1; i <= right; i += 1) {
+            let j = i;
+            while (j > left && array[j - 1] > array[j]) {
+                swap(array, j - 1, j, name);
+                j -= 1;
+            }
         }
+    }
+
+    function partition(low, high) {
+        const pivot = array[high];
+        let i = low;
+        for (let j = low; j < high; j += 1) {
+            if (array[j] <= pivot) {
+                swap(array, i, j, name);
+                i += 1;
+            }
+        }
+        swap(array, i, high, name);
+        return i;
+    }
+
+    function heapRange(low, high) {
+        const segment = array.slice(low, high + 1);
+        heapSortV2(segment, name);
+        for (let i = 0; i < segment.length; i += 1) {
+            const index = low + i;
+            const previous = array[index];
+            array[index] = segment[i];
+            emitArray(array, name, [previous, segment[i]]);
+        }
+    }
+
+    function sort(low, high, depthLimit) {
+        if (low >= high) {
+            return;
+        }
+        const size = (high - low) + 1;
+        if (size <= INSERTION_THRESHOLD) {
+            insertionRange(low, high);
+            return;
+        }
+        if (depthLimit <= 0) {
+            heapRange(low, high);
+            return;
+        }
+        const pivotIndex = partition(low, high);
+        sort(low, pivotIndex - 1, depthLimit - 1);
+        sort(pivotIndex + 1, high, depthLimit - 1);
+    }
+
+    sort(0, array.length - 1, maxDepth);
+    return array;
+}
+
+
+function flashSort(array, name) {
+    const n = array.length;
+    if (n <= 1) {
+        return array;
+    }
+
+    let min = array[0];
+    let max = array[0];
+    let maxIndex = 0;
+    for (let i = 1; i < n; i += 1) {
+        if (array[i] < min) {
+            min = array[i];
+        }
+        if (array[i] > max) {
+            max = array[i];
+            maxIndex = i;
+        }
+    }
+    if (min === max) {
+        return array;
+    }
+
+    const m = Math.max(2, Math.floor(0.43 * n));
+    const classCounts = new Array(m).fill(0);
+    const c1 = (m - 1) / (max - min);
+    const classIndex = (value) => Math.min(m - 1, Math.floor(c1 * (value - min)));
+
+    for (let i = 0; i < n; i += 1) {
+        classCounts[classIndex(array[i])] += 1;
+    }
+    for (let i = 1; i < m; i += 1) {
+        classCounts[i] += classCounts[i - 1];
+    }
+
+    swap(array, maxIndex, 0, name);
+
+    let moves = 0;
+    let j = 0;
+    let k = m - 1;
+    while (moves < n - 1) {
+        while (j > classCounts[k] - 1) {
+            j += 1;
+            if (j >= n) {
+                break;
+            }
+            k = classIndex(array[j]);
+        }
+        if (j >= n) {
+            break;
+        }
+
+        let flash = array[j];
+        while (j <= classCounts[k] - 1) {
+            k = classIndex(flash);
+            const destination = classCounts[k] - 1;
+            const displaced = array[destination];
+            const previous = array[destination];
+            array[destination] = flash;
+            emitArray(array, name, [previous, flash]);
+            flash = displaced;
+            classCounts[k] -= 1;
+            moves += 1;
+        }
+    }
+
+    for (let i = 1; i < n; i += 1) {
+        let current = i;
+        while (current > 0 && array[current - 1] > array[current]) {
+            swap(array, current - 1, current, name);
+            current -= 1;
+        }
+    }
+    return array;
+}
+
+function beadSort(array, name) {
+    if (array.length <= 1) {
+        return array;
+    }
+    for (let i = 0; i < array.length; i += 1) {
+        if (!Number.isFinite(array[i]) || !Number.isInteger(array[i])) {
+            throw new Error("BeadSort requires integer values");
+        }
+    }
+
+    const min = Math.min(...array);
+    const shifted = array.map((value) => value - min);
+    const max = Math.max(...shifted);
+    if (max === 0) {
+        return array;
+    }
+
+    const beads = Array.from({length: shifted.length}, () => new Array(max).fill(0));
+    for (let row = 0; row < shifted.length; row += 1) {
+        for (let col = 0; col < shifted[row]; col += 1) {
+            beads[row][col] = 1;
+        }
+    }
+
+    for (let col = 0; col < max; col += 1) {
+        let sum = 0;
+        for (let row = 0; row < shifted.length; row += 1) {
+            sum += beads[row][col];
+            beads[row][col] = 0;
+        }
+        for (let row = shifted.length - sum; row < shifted.length; row += 1) {
+            beads[row][col] = 1;
+        }
+    }
+
+    for (let row = 0; row < shifted.length; row += 1) {
+        let count = 0;
+        for (let col = 0; col < max; col += 1) {
+            count += beads[row][col];
+        }
+        const previous = array[row];
+        const nextValue = count + min;
+        array[row] = nextValue;
+        emitArray(array, name, [previous, nextValue]);
     }
     return array;
 }
@@ -452,71 +685,209 @@ function bogoSort(array, name) {
     return array;
 }
 
-function runSort(algorithm, originalArray) {
-    const array = [...originalArray];
-    switch (algorithm) {
-        case "bubble":
-            return bubbleSort(array, "BubbleSort");
-        case "selection":
-            return selectionSort(array, "SelectionSort");
-        case "insertion":
-            return insertionSort(array, "InsertionSort");
-        case "shell":
-            return shellSort(array, "ShellSort");
-        case "gnome":
-            return gnomeSort(array, "GnomeSort");
-        case "quick":
-            return quickSort(array, "QuickSort");
-        case "merge":
-            return mergeSort(array, "MergeSort");
-        case "heap":
-            return heapSort(array, "HeapSort");
-        case "heapv2":
-            return heapSort(array, "HeapSortV2");
-        case "oddeven":
-            return oddEvenSort(array, "OddEvenSort");
-        case "cocktail":
-            return cocktailSort(array, "CocktailShakerSort");
-        case "comb":
-            return combSort(array, "CombSort");
-        case "counting":
-            return countingLikeSort(array, "CountingSort");
-        case "bucket":
-            return bucketSort(array, "BucketSort");
-        case "cycle":
-            return cycleSort(array, "CycleSort");
-        case "radix":
-            return radixSort(array, "RadixSort");
-        case "pigeonhole":
-            return countingLikeSort(array, "PigeonHoleSort");
-        case "flash":
-            return quickSort(array, "FlashSort");
-        case "intro":
-            return quickSort(array, "IntroSort");
-        case "tim":
-            return timSort(array, "TimSort");
-        case "wiggle":
-            return quickSort(array, "WiggleSort");
-        case "bead":
-            return countingLikeSort(array, "BeadSort");
-        case "bogo":
-            return bogoSort(array, "BogoSort");
-        default:
-            throw new Error("Unsupported algorithm: " + algorithm);
+const BUILTIN_ALGORITHMS = [
+    {id: "bubble", label: "BubbleSort", runner: bubbleSort},
+    {id: "selection", label: "SelectionSort", runner: selectionSort},
+    {id: "insertion", label: "InsertionSort", runner: insertionSort},
+    {id: "shell", label: "ShellSort", runner: shellSort},
+    {id: "gnome", label: "GnomeSort", runner: gnomeSort},
+    {id: "quick", label: "QuickSort", runner: quickSort},
+    {id: "merge", label: "MergeSort", runner: mergeSort},
+    {id: "heap", label: "HeapSort", runner: heapSort},
+    {id: "heapv2", label: "HeapSortV2", runner: heapSortV2},
+    {id: "oddeven", label: "OddEvenSort", runner: oddEvenSort},
+    {id: "cocktail", label: "CocktailShakerSort", runner: cocktailSort},
+    {id: "comb", label: "CombSort", runner: combSort},
+    {id: "counting", label: "CountingSort", runner: countingLikeSort},
+    {id: "bucket", label: "BucketSort", runner: bucketSort},
+    {id: "cycle", label: "CycleSort", runner: cycleSort},
+    {id: "radix", label: "RadixSort", runner: radixSort},
+    {id: "pigeonhole", label: "PigeonHoleSort", runner: pigeonholeSort},
+    {id: "flash", label: "FlashSort", runner: flashSort},
+    {id: "intro", label: "IntroSort", runner: introSort},
+    {id: "tim", label: "TimSort", runner: timSort},
+    {id: "bead", label: "BeadSort", runner: beadSort},
+    {id: "bogo", label: "BogoSort", runner: bogoSort}
+];
+
+const BUILTIN_BY_ID = new Map(BUILTIN_ALGORITHMS.map((entry) => [entry.id, entry]));
+const MAX_CUSTOM_STEPS = 120000;
+const MAX_CUSTOM_CODE_LENGTH = 20000;
+const FORBIDDEN_CUSTOM_TOKENS = [
+    "self",
+    "globalThis",
+    "importScripts",
+    "Function",
+    "eval",
+    "fetch",
+    "XMLHttpRequest",
+    "Worker",
+    "WebSocket",
+    "postMessage",
+    "onmessage",
+    "indexedDB",
+    "caches",
+    "localStorage",
+    "sessionStorage"
+];
+
+function normalizeNumericArray(value, label) {
+    if (!Array.isArray(value)) {
+        throw new Error(label + " must be an array");
     }
+    const normalized = value.map((item) => Number(item));
+    for (let i = 0; i < normalized.length; i += 1) {
+        if (!Number.isFinite(normalized[i])) {
+            throw new Error(label + " must contain only finite numbers");
+        }
+    }
+    return normalized;
+}
+
+function getSafeIndex(index, length) {
+    if (!Number.isInteger(index) || index < 0 || index >= length) {
+        throw new Error("Index out of bounds: " + index);
+    }
+    return index;
+}
+
+function checkCustomCodeSafety(code) {
+    if (typeof code !== "string" || code.trim() === "") {
+        throw new Error("Custom algorithm code is empty");
+    }
+    if (code.length > MAX_CUSTOM_CODE_LENGTH) {
+        throw new Error("Custom algorithm is too long");
+    }
+    for (let i = 0; i < FORBIDDEN_CUSTOM_TOKENS.length; i += 1) {
+        const token = FORBIDDEN_CUSTOM_TOKENS[i];
+        const pattern = new RegExp("\\b" + token + "\\b");
+        if (pattern.test(code)) {
+            throw new Error("Forbidden token in custom algorithm: " + token);
+        }
+    }
+}
+
+function emitCustomStep(array, label, indices) {
+    const safeIndices = Array.isArray(indices)
+        ? indices.filter((value) => Number.isInteger(value) && value >= 0 && value < array.length).slice(0, 2)
+        : [];
+    self.postMessage({
+        swap: (label || "CustomSort step") + "\n",
+        swapElements: [],
+        swapIndices: safeIndices,
+        array: [...array],
+        finished: false
+    });
+}
+
+function executeCustomSort(code, originalArray) {
+    checkCustomCodeSafety(code);
+    const array = normalizeNumericArray(originalArray, "Custom sort input");
+    let customStepCount = 0;
+
+    function guardStep() {
+        customStepCount += 1;
+        if (customStepCount > MAX_CUSTOM_STEPS) {
+            throw new Error("Custom algorithm exceeded max step limit (" + MAX_CUSTOM_STEPS + ")");
+        }
+    }
+
+    const api = {
+        get length() {
+            return array.length;
+        },
+        get(index) {
+            return array[getSafeIndex(index, array.length)];
+        },
+        set(index, value) {
+            const safeIndex = getSafeIndex(index, array.length);
+            const numericValue = Number(value);
+            if (!Number.isFinite(numericValue)) {
+                throw new Error("set() requires a finite numeric value");
+            }
+            guardStep();
+            const previous = array[safeIndex];
+            array[safeIndex] = numericValue;
+            emitArray(array, "CustomSort", [previous, numericValue]);
+        },
+        swap(i, j) {
+            guardStep();
+            const a = getSafeIndex(i, array.length);
+            const b = getSafeIndex(j, array.length);
+            swap(array, a, b, "CustomSort");
+        },
+        compare(i, j) {
+            const a = getSafeIndex(i, array.length);
+            const b = getSafeIndex(j, array.length);
+            return array[a] - array[b];
+        },
+        emitStep(label, indices) {
+            guardStep();
+            emitCustomStep(array, label, indices);
+        },
+        getArray() {
+            return [...array];
+        }
+    };
+
+    const runner = new Function("api", "\"use strict\";\n" + code);
+    const result = runner(Object.freeze(api));
+    if (result && typeof result.then === "function") {
+        throw new Error("Custom algorithm must be synchronous");
+    }
+
+    const finalArray = Array.isArray(result) ? normalizeNumericArray(result, "Custom sort result") : array;
+    if (finalArray.length !== originalArray.length) {
+        throw new Error("Custom algorithm must return array with same length");
+    }
+    return finalArray;
+}
+
+function runBuiltInSort(algorithm, originalArray) {
+    const selected = BUILTIN_BY_ID.get(algorithm);
+    if (!selected) {
+        throw new Error("Unsupported algorithm: " + algorithm);
+    }
+    const array = [...originalArray];
+    return selected.runner(array, selected.label);
+}
+
+function listAlgorithms() {
+    return BUILTIN_ALGORITHMS.map((entry) => ({
+        id: entry.id,
+        label: entry.label,
+        source: entry.runner.toString()
+    }));
 }
 
 self.addEventListener("message", function (e) {
     try {
-        const input = Array.isArray(e.data) ? e.data : (e.data && Array.isArray(e.data.array) ? e.data.array : null);
+        const data = e && e.data ? e.data : {};
+        if (data.type === "listAlgorithms") {
+            self.postMessage({
+                type: "algorithmsList",
+                algorithms: listAlgorithms()
+            });
+            return;
+        }
+
+        const input = Array.isArray(data) ? data : (Array.isArray(data.array) ? data.array : null);
         if (!input) {
             throw new Error("Invalid sort input");
         }
-        const algorithm = e.data && typeof e.data.algorithm === "string" ? e.data.algorithm : null;
+
+        if (data.type === "custom") {
+            const code = typeof data.code === "string" ? data.code : "";
+            const sortedCustom = executeCustomSort(code, input);
+            self.postMessage({array: sortedCustom, swap: "finished\n", swapElements: [], finished: true});
+            return;
+        }
+
+        const algorithm = typeof data.algorithm === "string" ? data.algorithm : null;
         if (!algorithm) {
             throw new Error("Missing algorithm key");
         }
-        const sorted = runSort(algorithm, input);
+        const sorted = runBuiltInSort(algorithm, input);
         self.postMessage({array: sorted, swap: "finished\n", swapElements: [], finished: true});
     } catch (error) {
         self.postMessage({

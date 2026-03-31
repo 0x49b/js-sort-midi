@@ -63,7 +63,11 @@
             <div class="bottomcontrol">
                 <div class="sortHeader">
                     <strong>Choose an algorithm</strong>
-                    <span>Classic, efficient, and experimental sorting options</span>
+                    <span>Classic, efficient, and experimental sorting options or try your own.</span>
+                </div>
+                <div class="sortUtilityButtons">
+                    <button id="openCustomAlgoModalButton" type="button">Custom Algorithm</button>
+                    <button id="openSourceModalButton" type="button">Built-In Source</button>
                 </div>
                 <div class="sortGroup">
                     <h2>Classic</h2>
@@ -98,7 +102,6 @@
                         <button class="sortButton" data-algo="oddeven">OddEvenSort</button>
                         <button class="sortButton" data-algo="cycle">CycleSort</button>
                         <button class="sortButton" data-algo="flash">FlashSort</button>
-                        <button class="sortButton" data-algo="wiggle">WiggleSort</button>
                         <button class="sortButton" data-algo="bead">BeadSort</button>
                         <button class="sortButton" data-algo="bogo">BogoSort</button>
                     </div>
@@ -115,11 +118,61 @@
 
     <div id="swapText" class="swapText">finished</div>
 
+    <div id="customSortModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="customSortModalTitle">
+        <div class="modalBackdrop" data-close-modal="customSortModal"></div>
+        <div class="modalCard">
+            <div class="modalHeader">
+                <h2 id="customSortModalTitle">Custom algorithm</h2>
+                <button id="closeCustomSortModalButton" class="modalClose" type="button" aria-label="Close custom algorithm modal">&times;</button>
+            </div>
+            <div class="customSortPanel">
+                <label for="customAlgorithmInput">Custom JavaScript algorithm</label>
+                <textarea id="customAlgorithmInput" class="customAlgorithmInput" spellcheck="false"></textarea>
+                <div class="customSortActions">
+                    <button id="runCustomSortButton" type="button">Run custom sort</button>
+                    <button id="resetCustomSortButton" type="button">Reset template</button>
+                    <span id="customSortStatus" class="customSortStatus">Template loaded.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="sourceViewerModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="sourceViewerModalTitle">
+        <div class="modalBackdrop" data-close-modal="sourceViewerModal"></div>
+        <div class="modalCard">
+            <div class="modalHeader">
+                <h2 id="sourceViewerModalTitle">Built-In Source</h2>
+                <button id="closeSourceModalButton" class="modalClose" type="button" aria-label="Close source modal">&times;</button>
+            </div>
+            <div class="sourceViewerPanel">
+                <label for="algorithmSourceSelect">Algorithm</label>
+                <select id="algorithmSourceSelect" class="algorithmSourceSelect"></select>
+                <pre id="algorithmSourceCode" class="algorithmSourceCode">Loading built-in algorithms...</pre>
+            </div>
+        </div>
+    </div>
+
     <script type="module">
         const MIN_ELEMENTS = 10
         const MAX_ELEMENTS = 400
         const DEFAULT_ELEMENTS = 200
         const MAX_MESSAGES_PER_FRAME = 1
+        const CUSTOM_SORT_TIMEOUT_MS = 5000
+        const CUSTOM_SORT_TEMPLATE = [
+            "// Use the provided api object:",
+            "// api.length, api.get(index), api.set(index, value), api.swap(i, j), api.compare(i, j), api.emitStep(label, indices)",
+            "// Return an array (same length) or mutate via api methods.",
+            "",
+            "for (let i = 0; i < api.length - 1; i += 1) {",
+            "    for (let j = 0; j < api.length - 1 - i; j += 1) {",
+            "        if (api.compare(j, j + 1) > 0) {",
+            "            api.swap(j, j + 1)",
+            "        }",
+            "    }",
+            "}",
+            "",
+            "api.emitStep(\"Custom sort done\")"
+        ].join("\n")
 
         let swapsCounter = 0
         let colors = false
@@ -135,6 +188,10 @@
         let audioContext = null
         let runningSortButton = null
         let completionSweepToken = 0
+        let customSortTimeoutId = null
+        let sortWorker = null
+        let activeSortMode = null
+        let builtInAlgorithms = []
 
 
         const resetButton = document.getElementById("resetButton")
@@ -149,8 +206,19 @@
         const elementsValue = document.getElementById("elementsValue")
         const speedValue = document.getElementById("speedValue")
         const sortButtons = Array.from(document.querySelectorAll(".sortButton"))
-
-        const sortWorker = new Worker("algos/sort.js")
+        const openCustomAlgoModalButton = document.getElementById("openCustomAlgoModalButton")
+        const openSourceModalButton = document.getElementById("openSourceModalButton")
+        const customAlgorithmInput = document.getElementById("customAlgorithmInput")
+        const runCustomSortButton = document.getElementById("runCustomSortButton")
+        const resetCustomSortButton = document.getElementById("resetCustomSortButton")
+        const customSortStatus = document.getElementById("customSortStatus")
+        const algorithmSourceSelect = document.getElementById("algorithmSourceSelect")
+        const algorithmSourceCode = document.getElementById("algorithmSourceCode")
+        const customSortModal = document.getElementById("customSortModal")
+        const sourceViewerModal = document.getElementById("sourceViewerModal")
+        const closeCustomSortModalButton = document.getElementById("closeCustomSortModalButton")
+        const closeSourceModalButton = document.getElementById("closeSourceModalButton")
+        const modalBackdrops = Array.from(document.querySelectorAll(".modalBackdrop"))
 
 
         function clampElements(value) {
@@ -296,6 +364,82 @@
             return clampElements(elem === null ? DEFAULT_ELEMENTS : elem)
         }
 
+        function setCustomSortStatus(message) {
+            customSortStatus.innerText = message
+        }
+
+        function clearCustomSortTimeout() {
+            if (customSortTimeoutId !== null) {
+                clearTimeout(customSortTimeoutId)
+                customSortTimeoutId = null
+            }
+        }
+
+        function openModal(modal) {
+            if (!modal) {
+                return
+            }
+            modal.classList.add("is-open")
+        }
+
+        function closeModal(modal) {
+            if (!modal) {
+                return
+            }
+            modal.classList.remove("is-open")
+        }
+
+        function closeAllModals() {
+            closeModal(customSortModal)
+            closeModal(sourceViewerModal)
+        }
+
+        function renderAlgorithmSource() {
+            if (builtInAlgorithms.length === 0) {
+                algorithmSourceCode.innerText = "No built-in algorithms available."
+                return
+            }
+            const selectedId = algorithmSourceSelect.value
+            const selected = builtInAlgorithms.find((entry) => entry.id === selectedId) || builtInAlgorithms[0]
+            if (!selected) {
+                algorithmSourceCode.innerText = "No source code available."
+                return
+            }
+            if (algorithmSourceSelect.value !== selected.id) {
+                algorithmSourceSelect.value = selected.id
+            }
+            algorithmSourceCode.innerText = selected.source || "No source code available."
+        }
+
+        function updateAlgorithmSourceList(algorithms) {
+            if (!Array.isArray(algorithms)) {
+                return
+            }
+            builtInAlgorithms = algorithms
+                .filter((entry) => entry && typeof entry.id === "string" && typeof entry.label === "string")
+                .map((entry) => ({
+                    id: entry.id,
+                    label: entry.label,
+                    source: typeof entry.source === "string" ? entry.source : ""
+                }))
+            algorithmSourceSelect.innerHTML = ""
+            if (builtInAlgorithms.length === 0) {
+                const option = document.createElement("option")
+                option.value = ""
+                option.innerText = "No algorithms"
+                algorithmSourceSelect.append(option)
+            } else {
+                builtInAlgorithms.forEach((entry) => {
+                    const option = document.createElement("option")
+                    option.value = entry.id
+                    option.innerText = entry.label
+                    algorithmSourceSelect.append(option)
+                })
+            }
+            renderAlgorithmSource()
+            checkButtons()
+        }
+
         function updateBar(index) {
             const bar = barNodes[index]
             if (!bar) {
@@ -396,27 +540,39 @@
         }
 
         function checkButtons() {
-           
             rangeElements.disabled = isSorting
             sortButtons.forEach((button) => {
                 button.disabled = isSorting
             })
+            runCustomSortButton.disabled = isSorting
+            resetCustomSortButton.disabled = isSorting
+            customAlgorithmInput.disabled = isSorting
+            algorithmSourceSelect.disabled = isSorting || builtInAlgorithms.length === 0
+            openCustomAlgoModalButton.disabled = isSorting
+            openSourceModalButton.disabled = isSorting
         }
 
         function setRunningSortButton(button) {
             if (runningSortButton) {
                 runningSortButton.classList.remove("sort-running")
+                runningSortButton.classList.remove("sort-running-custom")
             }
             runningSortButton = button || null
             if (runningSortButton) {
-                runningSortButton.classList.add("sort-running")
+                if (runningSortButton === openCustomAlgoModalButton) {
+                    runningSortButton.classList.add("sort-running-custom")
+                } else {
+                    runningSortButton.classList.add("sort-running")
+                }
             }
         }
 
         function finishSort() {
+            clearCustomSortTimeout()
             setActiveIndices([])
             isSorting = false
             activeWorker = null
+            activeSortMode = null
             setRunningSortButton(null)
             checkButtons()
         }
@@ -428,6 +584,9 @@
             if (data.error) {
                 setActiveIndices([])
                 swapText.innerText = "Worker error: " + data.error
+                if (activeSortMode === "custom") {
+                    setCustomSortStatus("Error: " + data.error)
+                }
                 finished = true
                 finishSort()
                 return
@@ -438,6 +597,9 @@
                     renderBars(data.array)
                 }
                 swapText.innerText = data.swap || "finished"
+                if (activeSortMode === "custom") {
+                    setCustomSortStatus("Custom algorithm finished.")
+                }
                 finished = true
                 const finalArray = Array.isArray(data.array) ? [...data.array] : [...numbers]
                 finishSort()
@@ -491,6 +653,35 @@
             scheduleWorkerFrame()
         }
 
+        function requestBuiltInAlgorithms(worker) {
+            if (!worker) {
+                return
+            }
+            worker.postMessage({ type: "listAlgorithms" })
+        }
+
+        function createSortWorker() {
+            const worker = new Worker("algos/sort.js")
+            attachWorkerHandlers(worker, "Sort")
+            requestBuiltInAlgorithms(worker)
+            return worker
+        }
+
+        function handleCustomSortTimeout() {
+            if (!isSorting || activeSortMode !== "custom") {
+                return
+            }
+            setActiveIndices([])
+            finished = true
+            pendingMessages = []
+            swapText.innerText = "Custom sort timed out after " + CUSTOM_SORT_TIMEOUT_MS + "ms"
+            if (sortWorker) {
+                sortWorker.terminate()
+            }
+            finishSort()
+            sortWorker = createSortWorker()
+        }
+
         function startSort(worker, algorithm, sourceButton) {
             if (isSorting) {
                 return
@@ -509,9 +700,44 @@
             swapsCounter = 0
             swapsCounterText.innerText = swapsCounter
             swapText.innerText = "running"
+            setCustomSortStatus("Template loaded.")
+            activeSortMode = "builtin"
             setRunningSortButton(sourceButton)
             checkButtons()
-            worker.postMessage({ array: [...numbers], algorithm })
+            worker.postMessage({ type: "builtin", array: [...numbers], algorithm })
+        }
+
+        function startCustomSort(worker) {
+            if (isSorting) {
+                return
+            }
+            const code = customAlgorithmInput.value.trim()
+            if (!code) {
+                setCustomSortStatus("Please provide custom algorithm code.")
+                return
+            }
+            cancelCompletionSweep()
+            if (searchSoundEnabled) {
+                ensureAudioContext()
+            }
+            setActiveIndices([])
+            fisherYatesShuffle(numbers)
+            renderBars(numbers)
+            activeWorker = worker
+            isSorting = true
+            finished = false
+            pendingMessages = []
+            swapsCounter = 0
+            swapsCounterText.innerText = swapsCounter
+            swapText.innerText = "running"
+            setRunningSortButton(openCustomAlgoModalButton)
+            checkButtons()
+            setCustomSortStatus("Running custom algorithm...")
+            activeSortMode = "custom"
+            closeModal(customSortModal)
+            clearCustomSortTimeout()
+            customSortTimeoutId = setTimeout(handleCustomSortTimeout, CUSTOM_SORT_TIMEOUT_MS)
+            worker.postMessage({ type: "custom", array: [...numbers], code })
         }
 
         function setElementCount(rawValue) {
@@ -529,13 +755,23 @@
         }
 
         function attachWorkerHandlers(worker, name) {
-            worker.addEventListener("message", (event) => queueWorkerMessage(worker, event.data))
+            worker.addEventListener("message", (event) => {
+                const data = event.data
+                if (data && data.type === "algorithmsList") {
+                    updateAlgorithmSourceList(data.algorithms)
+                    return
+                }
+                queueWorkerMessage(worker, data)
+            })
             worker.addEventListener("error", (event) => {
                 if (worker !== activeWorker && !isSorting) {
                     return
                 }
                 setActiveIndices([])
                 swapText.innerText = name + " worker failed: " + (event.message || "unknown error")
+                if (activeSortMode === "custom") {
+                    setCustomSortStatus("Worker failed: " + (event.message || "unknown error"))
+                }
                 finished = true
                 finishSort()
             })
@@ -545,6 +781,9 @@
                 }
                 setActiveIndices([])
                 swapText.innerText = name + " worker sent invalid message"
+                if (activeSortMode === "custom") {
+                    setCustomSortStatus("Worker sent invalid message.")
+                }
                 finished = true
                 finishSort()
             })
@@ -567,7 +806,9 @@
             finished = true
             checkButtons()
             localStorage.removeItem("elements")
-            sortWorker.terminate()
+            if (sortWorker) {
+                sortWorker.terminate()
+            }
             document.location.reload()
         })
 
@@ -576,6 +817,53 @@
                 startSort(sortWorker, button.dataset.algo, button)
             })
         })
+
+        runCustomSortButton.addEventListener("click", () => {
+            startCustomSort(sortWorker)
+        })
+
+        resetCustomSortButton.addEventListener("click", () => {
+            customAlgorithmInput.value = CUSTOM_SORT_TEMPLATE
+            setCustomSortStatus("Template restored.")
+        })
+
+        algorithmSourceSelect.addEventListener("change", () => {
+            renderAlgorithmSource()
+        })
+
+        openCustomAlgoModalButton.addEventListener("click", () => {
+            openModal(customSortModal)
+        })
+
+        openSourceModalButton.addEventListener("click", () => {
+            openModal(sourceViewerModal)
+        })
+
+        closeCustomSortModalButton.addEventListener("click", () => {
+            closeModal(customSortModal)
+        })
+
+        closeSourceModalButton.addEventListener("click", () => {
+            closeModal(sourceViewerModal)
+        })
+
+        modalBackdrops.forEach((backdrop) => {
+            backdrop.addEventListener("click", () => {
+                const modalId = backdrop.dataset.closeModal
+                if (!modalId) {
+                    return
+                }
+                const target = document.getElementById(modalId)
+                closeModal(target)
+            })
+        })
+
+        document.addEventListener("keydown", (event) => {
+            if (event.key === "Escape") {
+                closeAllModals()
+            }
+        })
+
         rangeElements.addEventListener("input", () => {
             setElementCount(rangeElements.value)
         })
@@ -585,10 +873,12 @@
             updateRangeFill(speedRange)
         })
 
-        attachWorkerHandlers(sortWorker, "Sort")
+        sortWorker = createSortWorker()
 
         rangeElements.max = String(MAX_ELEMENTS)
         speedValue.innerText = speedRange.value + "x"
+        customAlgorithmInput.value = CUSTOM_SORT_TEMPLATE
+        setCustomSortStatus("Template loaded.")
         setElementCount(getFromLocalStorage())
         updateRangeFill(speedRange)
         swapText.innerText = "finished"
