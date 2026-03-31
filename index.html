@@ -53,10 +53,13 @@
                             <label for="speedRange">Speed</label>
                             <span id="speedValue" class="controlValue">1x</span>
                         </div>
-                        <input type="range" min="1" max="120" value="1" id="speedRange">
+                        <input type="range" min="-100" max="100" value="1" id="speedRange">
                     </div>
                     <div class="controlCard controlCardAction">
-                        <button id="resetButton">Reset</button>
+                        <div class="controlActionButtons">
+                            <button id="resetButton">Reset</button>
+                            <button id="stopButton" class="stopButton">Stop</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -130,15 +133,19 @@
         let barNodes = []
         let pendingMessages = []
         let frameScheduled = false
-        let activeIndices = new Set()
+        let speedMessageBudget = 0
+        let activePrimaryIndex = null
+        let activeSecondaryIndex = null
         let searchSoundEnabled = true
         let audioContext = null
         let runningSortButton = null
         let completionSweepToken = 0
+        let isCompletionSweeping = false
         const resetButton = document.getElementById("resetButton")
+        const stopButton = document.getElementById("stopButton")
         const colorCheckbox = document.getElementById("colorCheckbox")
         const searchSoundCheckbox = document.getElementById("searchSound")
-       
+
         const rangeElements = document.getElementById("rangeElements")
         const swapsCounterText = document.getElementById("swapsCount")
         const swapText = document.getElementById("swapText")
@@ -147,7 +154,7 @@
         const elementsValue = document.getElementById("elementsValue")
         const speedValue = document.getElementById("speedValue")
         const sortButtons = Array.from(document.querySelectorAll(".sortButton"))
-        const sortWorker = new Worker("algos/sort.js")
+        let sortWorker = null
 
 
         function clampElements(value) {
@@ -250,6 +257,10 @@
 
         function cancelCompletionSweep() {
             completionSweepToken += 1
+            if (isCompletionSweeping) {
+                isCompletionSweeping = false
+                checkButtons()
+            }
         }
 
         async function playCompletionSweep(array) {
@@ -257,6 +268,8 @@
                 return
             }
             const token = ++completionSweepToken
+            isCompletionSweeping = true
+            checkButtons()
             const ascending = array.length < 2 || array[0] <= array[array.length - 1]
             const indices = createRange(array.length)
             if (!ascending) {
@@ -268,6 +281,10 @@
 
             for (const index of indices) {
                 if (token !== completionSweepToken || isSorting) {
+                    if (token === completionSweepToken) {
+                        isCompletionSweeping = false
+                        checkButtons()
+                    }
                     return
                 }
                 setActiveIndices([index])
@@ -277,6 +294,8 @@
 
             if (token === completionSweepToken && !isSorting) {
                 setActiveIndices([])
+                isCompletionSweeping = false
+                checkButtons()
             }
         }
 
@@ -300,12 +319,17 @@
             }
             const value = numbers[index]
             const width = 720 / numbers.length
-            const hue = (index / numbers.length) * 300
-            const isActiveInMonochrome = !colors && activeIndices.has(index)
+            const maxValue = Math.max(numbers.length - 1, 1)
+            const normalized = Math.max(0, Math.min(1, value / maxValue))
+            const hue = normalized * 300
+            const isPrimaryHighlighted = index === activePrimaryIndex
+            const isSecondaryHighlighted = index === activeSecondaryIndex
             bar.style.width = width + "px"
             bar.style.height = value + 5 + "px"
-            if (isActiveInMonochrome) {
+            if (isPrimaryHighlighted) {
                 bar.style.backgroundColor = "#ff0000"
+            } else if (isSecondaryHighlighted) {
+                bar.style.backgroundColor = "#2ed573"
             } else {
                 bar.style.backgroundColor = colors ? `hsl(${hue},100%,50%)` : "#1e272e"
             }
@@ -313,19 +337,29 @@
         }
 
         function setActiveIndices(indices) {
-            const previousIndices = activeIndices
-            const nextIndices = new Set()
+            const previousPrimary = activePrimaryIndex
+            const previousSecondary = activeSecondaryIndex
+
+            let nextPrimary = null
+            let nextSecondary = null
 
             if (Array.isArray(indices)) {
-                for (const index of indices) {
-                    if (Number.isInteger(index) && index >= 0 && index < numbers.length) {
-                        nextIndices.add(index)
-                    }
+                const valid = indices.filter((index) =>
+                    Number.isInteger(index) && index >= 0 && index < numbers.length
+                )
+                if (valid.length > 0) {
+                    nextPrimary = valid[0]
+                }
+                if (valid.length > 1) {
+                    nextSecondary = valid[1]
                 }
             }
 
-            activeIndices = nextIndices
-            const changedIndices = new Set([...previousIndices, ...nextIndices])
+            activePrimaryIndex = nextPrimary
+            activeSecondaryIndex = nextSecondary
+
+            const changedIndices = new Set([previousPrimary, previousSecondary, nextPrimary, nextSecondary])
+            changedIndices.delete(null)
             changedIndices.forEach((index) => updateBar(index))
         }
 
@@ -392,11 +426,38 @@
             input.style.setProperty("--range-progress", progress + "%")
         }
 
+        function getSpeedFactor() {
+            const raw = Number(speedRange.value)
+            if (!Number.isFinite(raw)) {
+                return 1
+            }
+            if (raw >= 1) {
+                return raw
+            }
+            const slowed = 1 / (1 + (Math.abs(raw) / 8))
+            return Math.max(0.05, slowed)
+        }
+
+        function updateSpeedLabel() {
+            const raw = Number(speedRange.value)
+            const factor = getSpeedFactor()
+            if (!Number.isFinite(raw)) {
+                speedValue.innerText = "1x"
+                return
+            }
+            if (raw >= 1) {
+                speedValue.innerText = raw + "x"
+                return
+            }
+            speedValue.innerText = raw + " (" + factor.toFixed(2) + "x)"
+        }
+
         function checkButtons() {
             rangeElements.disabled = isSorting
             sortButtons.forEach((button) => {
-                button.disabled = isSorting
+                button.disabled = isSorting || isCompletionSweeping
             })
+            stopButton.disabled = !isSorting
         }
 
         function setRunningSortButton(button) {
@@ -413,6 +474,7 @@
             setActiveIndices([])
             isSorting = false
             activeWorker = null
+            speedMessageBudget = 0
             setRunningSortButton(null)
             checkButtons()
         }
@@ -456,15 +518,20 @@
 
         function processWorkerMessages() {
             frameScheduled = false
+            const speedFactor = getSpeedFactor()
+            speedMessageBudget += MAX_MESSAGES_PER_FRAME * speedFactor
             let processed = 0
-            while (pendingMessages.length > 0 && processed < MAX_MESSAGES_PER_FRAME * speedRange.value) {
+            const maxPerFrame = Math.min(240, Math.max(1, Math.ceil(speedFactor)))
+            while (pendingMessages.length > 0 && speedMessageBudget >= 1 && processed < maxPerFrame) {
                 const nextMessage = pendingMessages.shift()
                 handleWorkerMessage(nextMessage)
                 if (!isSorting) {
                     pendingMessages = []
+                    speedMessageBudget = 0
                     break
                 }
                 processed += 1
+                speedMessageBudget -= 1
             }
             if (pendingMessages.length > 0 && isSorting) {
                 scheduleWorkerFrame()
@@ -487,6 +554,12 @@
             scheduleWorkerFrame()
         }
 
+        function createSortWorker() {
+            const worker = new Worker("algos/sort.js")
+            attachWorkerHandlers(worker, "Sort")
+            return worker
+        }
+
         function startSort(worker, algorithm, clickedButton) {
             if (isSorting) {
                 return
@@ -502,6 +575,7 @@
             isSorting = true
             finished = false
             pendingMessages = []
+            speedMessageBudget = 0
             swapsCounter = 0
             swapsCounterText.innerText = swapsCounter
             swapText.innerText = "running"
@@ -569,6 +643,22 @@
             document.location.reload()
         })
 
+        stopButton.addEventListener("click", () => {
+            if (!isSorting) {
+                return
+            }
+            cancelCompletionSweep()
+            finished = true
+            pendingMessages = []
+            speedMessageBudget = 0
+            if (sortWorker) {
+                sortWorker.terminate()
+            }
+            swapText.innerText = "stopped"
+            finishSort()
+            sortWorker = createSortWorker()
+        })
+
         sortButtons.forEach((button) => {
             button.addEventListener("click", () => {
                 startSort(sortWorker, button.dataset.algo, button)
@@ -580,14 +670,14 @@
         })
 
         speedRange.addEventListener("input", () => {
-            speedValue.innerText = speedRange.value + "x"
+            updateSpeedLabel()
             updateRangeFill(speedRange)
         })
 
-        attachWorkerHandlers(sortWorker, "Sort")
+        sortWorker = createSortWorker()
 
         rangeElements.max = String(MAX_ELEMENTS)
-        speedValue.innerText = speedRange.value + "x"
+        updateSpeedLabel()
         setElementCount(getFromLocalStorage())
         updateRangeFill(speedRange)
         swapText.innerText = "finished"

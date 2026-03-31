@@ -56,6 +56,15 @@ body {
             transition: background-color 160ms ease, color 160ms ease, transform 120ms ease, box-shadow 160ms ease;
         }
 
+        button.stopButton {
+            background-color: #e74c3c;
+        }
+
+        button.stopButton:hover {
+            background-color: #c0392b;
+            color: #ffffff;
+        }
+
         button:hover {
             background-color: #808e9b;
             color: #1e272e;
@@ -71,7 +80,7 @@ body {
             transform: translateY(1px);
         }
 
-        button:disabled {
+        button:disabled, button.stopButton:disabled {
             background-color: #d2dae2;
             color: #1e272e;
             cursor: not-allowed;
@@ -79,7 +88,7 @@ body {
 
         button.sort-running,
         button.sort-running:disabled {
-            background-color: #ff3f34;
+            background-color: #e74c3c;
             color: #ffffff;
             box-shadow: 0 0 0 2px rgba(255, 63, 52, .3);
         }
@@ -152,6 +161,8 @@ body {
         }
 
         .controlCardAction {
+            grid-column: span 2;
+            align-items: stretch;
             justify-content: center;
         }
 
@@ -159,8 +170,17 @@ body {
             min-height: 50px;
         }
 
+        .controlActionButtons {
+            width: 100%;
+            display: flex;
+            flex-direction: row;
+            flex-wrap: nowrap;
+            gap: .45rem;
+        }
+
         .controlCardAction button {
             width: 100%;
+            flex: 1 1 0;
         }
 
         .controlLabelRow {
