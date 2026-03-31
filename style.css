@@ -51,7 +51,9 @@ body {
             padding: .8rem;
             color: #d2dae2;
             font-family: Poppins, sans-serif;
-            border-radius: 4px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 160ms ease, color 160ms ease, transform 120ms ease, box-shadow 160ms ease;
         }
 
         button:hover {
@@ -59,9 +61,27 @@ body {
             color: #1e272e;
         }
 
+        button:focus-visible {
+            outline: 2px solid #0fbcf9;
+            outline-offset: 2px;
+            box-shadow: 0 0 0 3px rgba(15, 188, 249, .2);
+        }
+
+        button:active:not(:disabled) {
+            transform: translateY(1px);
+        }
+
         button:disabled {
             background-color: #d2dae2;
             color: #1e272e;
+            cursor: not-allowed;
+        }
+
+        button.sort-running,
+        button.sort-running:disabled {
+            background-color: #ff3f34;
+            color: #ffffff;
+            box-shadow: 0 0 0 2px rgba(255, 63, 52, .3);
         }
 
         .topbar {
@@ -70,11 +90,304 @@ body {
         }
 
         .controls {
-            width: 100%;
-            text-align: center;
-            margin-bottom: 1rem;
+            width: min(1460px, 97%);
+            margin: 0 auto 1rem;
+            text-align: left;
+            display: grid;
+            grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+            column-gap: 2.5rem;
+            row-gap: 1.2rem;
+            align-items: stretch;
         }
 
         .topcontrol {
-            margin-bottom: .5rem;
+            width: 100%;
+            margin: 0;
+            text-align: left;
+            background: #f3f5f7;
+            border: 1px solid #dfe4ea;
+            border-radius: 12px;
+            padding: .9rem;
+            height: 100%;
+        }
+
+        .topcontrolHeader {
+            display: flex;
+            flex-direction: column;
+            gap: .15rem;
+            margin-bottom: .75rem;
+        }
+
+        .topcontrolHeader strong {
+            font-size: 1rem;
+        }
+
+        .topcontrolHeader span {
+            font-size: .85rem;
+            color: #57606f;
+        }
+
+        .topcontrolGrid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: .55rem;
+        }
+
+        .controlCard {
+            background: #ffffff;
+            border: 1px solid #dfe4ea;
+            border-radius: 10px;
+            padding: .6rem .7rem;
+            display: flex;
+            align-items: center;
+            min-height: 50px;
+        }
+
+        .controlCardWide {
+            grid-column: span 2;
+            align-items: stretch;
+            flex-direction: column;
+            justify-content: center;
+            gap: .45rem;
+        }
+
+        .controlCardAction {
+            justify-content: center;
+        }
+
+        .controlCardToggle {
+            min-height: 50px;
+        }
+
+        .controlCardAction button {
+            width: 100%;
+        }
+
+        .controlLabelRow {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: .5rem;
+        }
+
+        .controlValue {
+            font-size: .78rem;
+            color: #485460;
+            background: #e9edf2;
+            border-radius: 999px;
+            padding: .1rem .45rem;
+            min-width: 2.4rem;
+            text-align: center;
+        }
+
+        .elementsInputs {
+            display: grid;
+            grid-template-columns: 1fr;
+            align-items: center;
+            gap: .55rem;
+        }
+
+        .topcontrol input[type="range"] {
+            width: 100%;
+            -webkit-appearance: none;
+            appearance: none;
+            height: 6px;
+            border-radius: 999px;
+            border: 1px solid #dfe4ea;
+            background: linear-gradient(to right,
+                    #3498db 0%,
+                    #3498db var(--range-progress, 0%),
+                    #ffffff var(--range-progress, 0%),
+                    #ffffff 100%);
+        }
+
+        .topcontrol input[type="range"]::-webkit-slider-runnable-track {
+            height: 6px;
+            background: transparent;
+            border: none;
+        }
+
+        .topcontrol input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: none;
+            background: #3498db;
+            margin-top: -6px;
+            cursor: pointer;
+        }
+
+        .topcontrol input[type="range"]::-moz-range-track {
+            height: 6px;
+            background: #ffffff;
+            border-radius: 999px;
+            border: 1px solid #dfe4ea;
+        }
+
+        .topcontrol input[type="range"]::-moz-range-progress {
+            height: 6px;
+            background: #3498db;
+            border-radius: 999px;
+        }
+
+        .topcontrol input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: none;
+            background: #3498db;
+            cursor: pointer;
+        }
+
+        .switchField {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: .45rem;
+            font-size: .95rem;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 46px;
+            height: 26px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #bcc3cb;
+            transition: .25s;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background-color: #ffffff;
+            transition: .25s;
+        }
+
+        .switch input:checked+.slider {
+            background-color: #3498db;
+        }
+
+        .switch input:focus-visible+.slider {
+            box-shadow: 0 0 0 3px rgba(15, 188, 249, .28);
+        }
+
+        .switch input:checked+.slider:before {
+            transform: translateX(20px);
+        }
+
+        .slider.round {
+            border-radius: 26px;
+        }
+
+        .slider.round:before {
+            border-radius: 50%;
+        }
+
+        .bottomcontrol {
+            width: 100%;
+            margin: 0;
+            text-align: left;
+            background: #f3f5f7;
+            border: 1px solid #dfe4ea;
+            border-radius: 12px;
+            padding: .9rem;
+            height: 100%;
+        }
+
+        .sortHeader {
+            display: flex;
+            flex-direction: column;
+            gap: .15rem;
+            margin-bottom: .75rem;
+        }
+
+        .sortHeader strong {
+            font-size: 1rem;
+        }
+
+        .sortHeader span {
+            font-size: .85rem;
+            color: #57606f;
+        }
+
+        .sortGroup {
+            margin-bottom: .75rem;
+        }
+
+        .sortGroup:last-child {
+            margin-bottom: 0;
+        }
+
+        .sortGroup h2 {
+            margin: 0 0 .45rem;
+            font-size: .85rem;
+            letter-spacing: .04em;
+            color: #57606f;
+            text-transform: uppercase;
+        }
+
+        .sortButtonsGrid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: .45rem;
+        }
+
+        .sortButton {
+            width: 100%;
+            min-height: 2.3rem;
+            font-size: .88rem;
+            line-height: 1.15;
+            padding: .6rem .7rem;
+            border-radius: 9px;
+        }
+
+        @media (max-width: 740px) {
+            h1 {
+                font-size: 3.1rem;
+            }
+
+            .controls {
+                width: min(1040px, 96%);
+                grid-template-columns: 1fr;
+            }
+
+            .controlCardWide {
+                grid-column: span 1;
+            }
+
+            .topcontrolGrid {
+                grid-template-columns: 1fr;
+            }
+
+            .elementsInputs {
+                grid-template-columns: 1fr;
+            }
+
+            .sortButtonsGrid {
+                grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            }
         }

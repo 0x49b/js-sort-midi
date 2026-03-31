@@ -7,223 +7,592 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,400;0,900;1,400;1,900&display=swap"
-          rel="stylesheet">
+        rel="stylesheet">
     <link rel="stylesheet" href="./style.css">
 </head>
+
 <body>
-<h1>Sorting in JavaScript</h1>
-<div class="topbar">
-    <div class="controls">
-
-        <div class="topcontrol">
-            <button id="mixButton">Shuffle</button>
-            <label for="elements">Elements</label>
-            <input type="number" id="elements" max="560" min="10">
-            <input type="range" min="10" max="400" id="rangeElements">
-            <button id="resetButton">Reset</button>
-            <label for="colorCheckbox">Use Colors</label>
-            <input type="checkbox" id="colorCheckbox" checked>
-
+    <h1>Sorting in JavaScript</h1>
+    <div class="topbar">
+        <div class="controls">
+            <div class="topcontrol">
+                <div class="topcontrolHeader">
+                    <strong>Visualization settings</strong>
+                    <span>Tune display and playback before running a sort</span>
+                </div>
+                <div class="topcontrolGrid">
+                    <div class="controlCard controlCardWide">
+                        <div class="controlLabelRow">
+                            <label for="rangeElements">Elements</label>
+                            <span id="elementsValue" class="controlValue">0</span>
+                        </div>
+                        <div class="elementsInputs">
+                            <input type="range" min="10" max="400" id="rangeElements">
+                        </div>
+                    </div>
+                    <div class="controlCard controlCardToggle">
+                        <label class="switchField" for="searchSound">
+                            <span>Sound</span>
+                            <span class="switch">
+                                <input type="checkbox" id="searchSound" checked>
+                                <span class="slider round"></span>
+                            </span>
+                        </label>
+                    </div>
+                    <div class="controlCard controlCardToggle">
+                        <label class="switchField" for="colorCheckbox">
+                            <span>Colors</span>
+                            <span class="switch">
+                                <input type="checkbox" id="colorCheckbox">
+                                <span class="slider round"></span>
+                            </span>
+                        </label>
+                    </div>
+                    <div class="controlCard controlCardWide">
+                        <div class="controlLabelRow">
+                            <label for="speedRange">Speed</label>
+                            <span id="speedValue" class="controlValue">1x</span>
+                        </div>
+                        <input type="range" min="1" max="120" value="1" id="speedRange">
+                    </div>
+                    <div class="controlCard controlCardAction">
+                        <button id="resetButton">Reset</button>
+                    </div>
+                </div>
+            </div>
+            <div class="bottomcontrol">
+                <div class="sortHeader">
+                    <strong>Choose an algorithm</strong>
+                    <span>Classic, efficient, and experimental sorting options</span>
+                </div>
+                <div class="sortGroup">
+                    <h2>Classic</h2>
+                    <div class="sortButtonsGrid">
+                        <button class="sortButton" data-algo="bubble">BubbleSort</button>
+                        <button class="sortButton" data-algo="comb">CombSort</button>
+                        <button class="sortButton" data-algo="gnome">GnomeSort</button>
+                        <button class="sortButton" data-algo="insertion">InsertionSort</button>
+                        <button class="sortButton" data-algo="selection">SelectionSort</button>
+                        <button class="sortButton" data-algo="shell">ShellSort</button>
+                    </div>
+                </div>
+                <div class="sortGroup">
+                    <h2>Efficient</h2>
+                    <div class="sortButtonsGrid">
+                        <button class="sortButton" data-algo="bucket">BucketSort</button>
+                        <button class="sortButton" data-algo="counting">CountingSort</button>
+                        <button class="sortButton" data-algo="heap">HeapSort</button>
+                        <button class="sortButton" data-algo="heapv2">HeapSortV2</button>
+                        <button class="sortButton" data-algo="intro">IntroSort</button>
+                        <button class="sortButton" data-algo="merge">MergeSort</button>
+                        <button class="sortButton" data-algo="pigeonhole">PigeonHoleSort</button>
+                        <button class="sortButton" data-algo="quick">QuickSort</button>
+                        <button class="sortButton" data-algo="radix">RadixSort</button>
+                        <button class="sortButton" data-algo="tim">TimSort</button>
+                    </div>
+                </div>
+                <div class="sortGroup">
+                    <h2>Experimental</h2>
+                    <div class="sortButtonsGrid">
+                        <button class="sortButton" data-algo="cocktail">CocktailShakerSort</button>
+                        <button class="sortButton" data-algo="oddeven">OddEvenSort</button>
+                        <button class="sortButton" data-algo="cycle">CycleSort</button>
+                        <button class="sortButton" data-algo="flash">FlashSort</button>
+                        <button class="sortButton" data-algo="wiggle">WiggleSort</button>
+                        <button class="sortButton" data-algo="bead">BeadSort</button>
+                        <button class="sortButton" data-algo="bogo">BogoSort</button>
+                    </div>
+                </div>
+            </div>
         </div>
-        </br>
-        <div class="bottomcontrol">
-            <button id="bubblesortButton">BubbleSort</button>
-            <button id="selectionsortButton">SelectionSort</button>
-            <button id="insertionsortButton">InsertionSort</button>
-            <button id="shellsortButton">ShellSort</button>
-        </div>
+        <br />
+        <span>Swaps: <span id="swapsCount">0</span></span>
     </div>
-    <br/>
-    <span>Swaps: <span id="swapsCount">0</span></span>
-</div>
 
-<div class="outer">
-    <div id="bars" class="bars"></div>
-</div>
+    <div class="outer">
+        <div id="bars" class="bars"></div>
+    </div>
 
-<div id="swapText" class="swapText">finished</div>
+    <div id="swapText" class="swapText">finished</div>
 
-<script type="module">
+    <script type="module">
+        const MIN_ELEMENTS = 10
+        const MAX_ELEMENTS = 400
+        const DEFAULT_ELEMENTS = 200
+        const MAX_MESSAGES_PER_FRAME = 1
 
-    let startElements = getFromLocalStorage()
-    let swapsCounter = 0
-    let colors = true
-    let finished = false;
-
-    let numbers = [...Array(startElements).keys()]
-    let barsMixed = false;
-    let bubblesortButton = document.getElementById("bubblesortButton")
-    let selectionsortButton = document.getElementById("selectionsortButton")
-    let insertionsortButton = document.getElementById("insertionsortButton")
-    let shellsortButton = document.getElementById("shellsortButton")
-    let resetButton = document.getElementById("resetButton")
-    let colorCheckbox = document.getElementById("colorCheckbox")
-
-    let mixButton = document.getElementById("mixButton")
-    let elements = document.getElementById("elements")
-    let rangeElements = document.getElementById("rangeElements")
-    let soundCheckbox = document.getElementById("soundCheckbox")
-    let swapsCounterText = document.getElementById("swapsCount")
-    let swapText = document.getElementById("swapText")
-
-    const bubbleWorker = new Worker("bubble.js");
-    const selectionWorker = new Worker("selection.js")
-    const insertionWorker = new Worker("insertion.js")
-    const shellWorker = new Worker("shell.js")
+        let swapsCounter = 0
+        let colors = false
+        let finished = false
+        let isSorting = false
+        let activeWorker = null
+        let numbers = []
+        let barNodes = []
+        let pendingMessages = []
+        let frameScheduled = false
+        let activeIndices = new Set()
+        let searchSoundEnabled = true
+        let audioContext = null
+        let runningSortButton = null
+        let completionSweepToken = 0
 
 
-    elements.value = startElements
-    rangeElements.value = startElements
-    swapsCounterText.innerText = swapsCounter
+        const resetButton = document.getElementById("resetButton")
+        const colorCheckbox = document.getElementById("colorCheckbox")
+        const searchSoundCheckbox = document.getElementById("searchSound")
+       
+        const rangeElements = document.getElementById("rangeElements")
+        const swapsCounterText = document.getElementById("swapsCount")
+        const swapText = document.getElementById("swapText")
+        const bars = document.getElementById("bars")
+        const speedRange = document.getElementById("speedRange")
+        const elementsValue = document.getElementById("elementsValue")
+        const speedValue = document.getElementById("speedValue")
+        const sortButtons = Array.from(document.querySelectorAll(".sortButton"))
 
-    async function printBars(el, arr) {
-        const container = document.getElementById(el)
-        container.innerHTML = ""
-        for (let n = 0; n < arr.length; n++) {
-            let bar = document.createElement("div")
-            bar.style.width = 720 / arr.length + "px"
-            bar.style.height = arr[n] + 5 + "px";
+        const sortWorker = new Worker("algos/sort.js")
 
-            const start = 0;
-            const span = 300;
-            (colors
-                ? bar.style.backgroundColor =
-                    `hsl(${start + (n / arr.length) * span},100%,50%)`
-                : bar.style.backgroundColor = "#1e272e");
 
-            bar.id = el + "-" + arr[n]
-            bar.setAttribute('class', 'bar')
-            container.append(bar)
+        function clampElements(value) {
+            const parsed = Number.parseInt(value, 10)
+            if (Number.isNaN(parsed)) {
+                return MAX_ELEMENTS
+            }
+            return Math.max(MIN_ELEMENTS, Math.min(MAX_ELEMENTS, parsed))
         }
-    }
 
-    async function mixBars(arr) {
-        arr = arr.sort(() => Math.random() - 0.5)
-        await printBars("bars", arr)
-    }
+        function ensureAudioContext() {
+            if (!audioContext) {
+                audioContext = new AudioContext()
+            }
+            if (audioContext.state === "suspended") {
+                audioContext.resume()
+            }
+        }
 
-    function checkButtons(barsMixed, mixbutton, buttons) {
-        if (barsMixed) {
-            mixbutton.disabled = true
-            elements.disabled = true
-            rangeElements.disabled = true
-            buttons.forEach((b) => {
-                b.disabled = false
+        function getSwapFrequency(swapElements) {
+            if (!Array.isArray(swapElements) || swapElements.length < 2) {
+                return null
+            }
+            const first = Number(swapElements[0])
+            const second = Number(swapElements[1])
+            if (!Number.isFinite(first) || !Number.isFinite(second)) {
+                return null
+            }
+            const average = (first + second) / 2
+            const maxValue = Math.max(numbers.length - 1, 1)
+            const normalized = Math.max(0, Math.min(1, average / maxValue))
+            const minFrequency = 180
+            const maxFrequency = 1600
+            return minFrequency + normalized * (maxFrequency - minFrequency)
+        }
+
+        function playSwapBeep(swapElements) {
+            if (!searchSoundEnabled) {
+                return
+            }
+            ensureAudioContext()
+            if (!audioContext || audioContext.state !== "running") {
+                return
+            }
+            const frequency = getSwapFrequency(swapElements)
+            if (frequency === null) {
+                return
+            }
+
+            const now = audioContext.currentTime
+            const oscillator = audioContext.createOscillator()
+            const gainNode = audioContext.createGain()
+            oscillator.type = "sine"
+            oscillator.frequency.setValueAtTime(frequency, now)
+            gainNode.gain.setValueAtTime(0.0001, now)
+            gainNode.gain.exponentialRampToValueAtTime(0.03, now + 0.003)
+            gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.05)
+            oscillator.connect(gainNode)
+            gainNode.connect(audioContext.destination)
+            oscillator.start(now)
+            oscillator.stop(now + 0.055)
+        }
+
+        function getValueFrequency(value, minValue, maxValue) {
+            if (!Number.isFinite(value) || !Number.isFinite(minValue) || !Number.isFinite(maxValue)) {
+                return null
+            }
+            const range = Math.max(maxValue - minValue, 1)
+            const normalized = Math.max(0, Math.min(1, (value - minValue) / range))
+            const minFrequency = 180
+            const maxFrequency = 1600
+            return minFrequency + normalized * (maxFrequency - minFrequency)
+        }
+
+        function playValueBeep(value, minValue, maxValue) {
+            if (!searchSoundEnabled) {
+                return
+            }
+            ensureAudioContext()
+            if (!audioContext || audioContext.state !== "running") {
+                return
+            }
+            const frequency = getValueFrequency(value, minValue, maxValue)
+            if (frequency === null) {
+                return
+            }
+            const now = audioContext.currentTime
+            const oscillator = audioContext.createOscillator()
+            const gainNode = audioContext.createGain()
+            oscillator.type = "sine"
+            oscillator.frequency.setValueAtTime(frequency, now)
+            gainNode.gain.setValueAtTime(0.0001, now)
+            gainNode.gain.exponentialRampToValueAtTime(0.025, now + 0.004)
+            gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.045)
+            oscillator.connect(gainNode)
+            gainNode.connect(audioContext.destination)
+            oscillator.start(now)
+            oscillator.stop(now + 0.05)
+        }
+
+        function cancelCompletionSweep() {
+            completionSweepToken += 1
+        }
+
+        async function playCompletionSweep(array) {
+            if (!Array.isArray(array) || array.length === 0) {
+                return
+            }
+            const token = ++completionSweepToken
+            const ascending = array.length < 2 || array[0] <= array[array.length - 1]
+            const indices = createRange(array.length)
+            if (!ascending) {
+                indices.reverse()
+            }
+            const minValue = Math.min(...array)
+            const maxValue = Math.max(...array)
+            const stepDelayMs = Math.max(6, Math.floor(2500 / indices.length))
+
+            for (const index of indices) {
+                if (token !== completionSweepToken || isSorting) {
+                    return
+                }
+                setActiveIndices([index])
+                playValueBeep(array[index], minValue, maxValue)
+                await new Promise((resolve) => setTimeout(resolve, stepDelayMs))
+            }
+
+            if (token === completionSweepToken && !isSorting) {
+                setActiveIndices([])
+            }
+        }
+
+        function createRange(count) {
+            return [...Array(count).keys()]
+        }
+
+        function addToLocalStorage(elem) {
+            localStorage.setItem("elements", String(elem))
+        }
+
+        function getFromLocalStorage() {
+            const elem = localStorage.getItem("elements")
+            return clampElements(elem === null ? DEFAULT_ELEMENTS : elem)
+        }
+
+        function updateBar(index) {
+            const bar = barNodes[index]
+            if (!bar) {
+                return
+            }
+            const value = numbers[index]
+            const width = 720 / numbers.length
+            const hue = (index / numbers.length) * 300
+            const isActiveInMonochrome = !colors && activeIndices.has(index)
+            bar.style.width = width + "px"
+            bar.style.height = value + 5 + "px"
+            if (isActiveInMonochrome) {
+                bar.style.backgroundColor = "#ff0000"
+            } else {
+                bar.style.backgroundColor = colors ? `hsl(${hue},100%,50%)` : "#1e272e"
+            }
+            bar.id = "bars-" + index
+        }
+
+        function setActiveIndices(indices) {
+            const previousIndices = activeIndices
+            const nextIndices = new Set()
+
+            if (Array.isArray(indices)) {
+                for (const index of indices) {
+                    if (Number.isInteger(index) && index >= 0 && index < numbers.length) {
+                        nextIndices.add(index)
+                    }
+                }
+            }
+
+            activeIndices = nextIndices
+            const changedIndices = new Set([...previousIndices, ...nextIndices])
+            changedIndices.forEach((index) => updateBar(index))
+        }
+
+        function getChangedIndices(nextArray) {
+            if (!Array.isArray(nextArray)) {
+                return []
+            }
+            const changed = []
+            const length = Math.min(numbers.length, nextArray.length)
+            for (let index = 0; index < length; index++) {
+                if (numbers[index] !== nextArray[index]) {
+                    changed.push(index)
+                }
+            }
+            return changed
+        }
+
+        function renderBars(arr) {
+            numbers = [...arr]
+            if (barNodes.length !== numbers.length) {
+                bars.innerHTML = ""
+                barNodes = []
+                const fragment = document.createDocumentFragment()
+                for (let index = 0; index < numbers.length; index++) {
+                    const bar = document.createElement("div")
+                    bar.setAttribute("class", "bar")
+                    barNodes.push(bar)
+                    fragment.append(bar)
+                }
+                bars.append(fragment)
+            }
+
+            for (let index = 0; index < numbers.length; index++) {
+                updateBar(index)
+            }
+        }
+
+        function applySwap(i, j) {
+            if (i < 0 || j < 0 || i >= numbers.length || j >= numbers.length) {
+                return
+            }
+            const tmp = numbers[i]
+            numbers[i] = numbers[j]
+            numbers[j] = tmp
+            updateBar(i)
+            updateBar(j)
+        }
+
+        function fisherYatesShuffle(arr) {
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1))
+                const tmp = arr[i]
+                arr[i] = arr[j]
+                arr[j] = tmp
+            }
+        }
+
+        function updateRangeFill(input) {
+            const min = Number(input.min || 0)
+            const max = Number(input.max || 100)
+            const value = Number(input.value || min)
+            const range = Math.max(max - min, 1)
+            const progress = ((value - min) / range) * 100
+            input.style.setProperty("--range-progress", progress + "%")
+        }
+
+        function checkButtons() {
+           
+            rangeElements.disabled = isSorting
+            sortButtons.forEach((button) => {
+                button.disabled = isSorting
             })
-        } else {
-            mixbutton.disabled = false
-            elements.disabled = false
-            rangeElements.disabled = false
-            buttons.forEach((b) => {
-                b.disabled = true
+        }
+
+        function setRunningSortButton(button) {
+            if (runningSortButton) {
+                runningSortButton.classList.remove("sort-running")
+            }
+            runningSortButton = button || null
+            if (runningSortButton) {
+                runningSortButton.classList.add("sort-running")
+            }
+        }
+
+        function finishSort() {
+            setActiveIndices([])
+            isSorting = false
+            activeWorker = null
+            setRunningSortButton(null)
+            checkButtons()
+        }
+
+        function handleWorkerMessage(data) {
+            if (!data) {
+                return
+            }
+            if (data.error) {
+                setActiveIndices([])
+                swapText.innerText = "Worker error: " + data.error
+                finished = true
+                finishSort()
+                return
+            }
+            if (data.finished) {
+                setActiveIndices([])
+                if (Array.isArray(data.array)) {
+                    renderBars(data.array)
+                }
+                swapText.innerText = data.swap || "finished"
+                finished = true
+                const finalArray = Array.isArray(data.array) ? [...data.array] : [...numbers]
+                finishSort()
+                playCompletionSweep(finalArray)
+                return
+            }
+
+            if (Array.isArray(data.swapIndices) && data.swapIndices.length === 2) {
+                setActiveIndices(data.swapIndices)
+                applySwap(data.swapIndices[0], data.swapIndices[1])
+            } else if (Array.isArray(data.array)) {
+                setActiveIndices(getChangedIndices(data.array))
+                renderBars(data.array)
+            }
+            playSwapBeep(data.swapElements)
+            swapsCounter += 1
+            swapsCounterText.innerText = swapsCounter
+            swapText.innerText = data.swap || "running"
+        }
+
+        function processWorkerMessages() {
+            frameScheduled = false
+            let processed = 0
+            while (pendingMessages.length > 0 && processed < MAX_MESSAGES_PER_FRAME * speedRange.value) {
+                const nextMessage = pendingMessages.shift()
+                handleWorkerMessage(nextMessage)
+                if (!isSorting) {
+                    pendingMessages = []
+                    break
+                }
+                processed += 1
+            }
+            if (pendingMessages.length > 0 && isSorting) {
+                scheduleWorkerFrame()
+            }
+        }
+
+        function scheduleWorkerFrame() {
+            if (frameScheduled) {
+                return
+            }
+            frameScheduled = true
+            requestAnimationFrame(processWorkerMessages)
+        }
+
+        function queueWorkerMessage(worker, data) {
+            if (worker !== activeWorker || !isSorting) {
+                return
+            }
+            pendingMessages.push(data)
+            scheduleWorkerFrame()
+        }
+
+        function startSort(worker, algorithm, sourceButton) {
+            if (isSorting) {
+                return
+            }
+            cancelCompletionSweep()
+            if (searchSoundEnabled) {
+                ensureAudioContext()
+            }
+            setActiveIndices([])
+            fisherYatesShuffle(numbers)
+            renderBars(numbers)
+            activeWorker = worker
+            isSorting = true
+            finished = false
+            pendingMessages = []
+            swapsCounter = 0
+            swapsCounterText.innerText = swapsCounter
+            swapText.innerText = "running"
+            setRunningSortButton(sourceButton)
+            checkButtons()
+            worker.postMessage({ array: [...numbers], algorithm })
+        }
+
+        function setElementCount(rawValue) {
+            const count = clampElements(rawValue)
+            numbers = createRange(count)
+            setActiveIndices([])
+            swapsCounter = 0
+            swapsCounterText.innerText = swapsCounter
+            rangeElements.value = count
+            elementsValue.innerText = String(count)
+            updateRangeFill(rangeElements)
+            addToLocalStorage(count)
+            renderBars(numbers)
+            checkButtons()
+        }
+
+        function attachWorkerHandlers(worker, name) {
+            worker.addEventListener("message", (event) => queueWorkerMessage(worker, event.data))
+            worker.addEventListener("error", (event) => {
+                if (worker !== activeWorker && !isSorting) {
+                    return
+                }
+                setActiveIndices([])
+                swapText.innerText = name + " worker failed: " + (event.message || "unknown error")
+                finished = true
+                finishSort()
+            })
+            worker.addEventListener("messageerror", () => {
+                if (worker !== activeWorker && !isSorting) {
+                    return
+                }
+                setActiveIndices([])
+                swapText.innerText = name + " worker sent invalid message"
+                finished = true
+                finishSort()
             })
         }
-    }
 
-    function updatePage(e) {
-        printBars("bars", e.data.array)
-        swapsCounter++
-        swapsCounterText.innerText = swapsCounter
-        swapText.innerText = e.data.swap
-        if (e.data.finished) {
-            finished = e.data.finished
-        }
-        checkButtons(barsMixed, mixButton, [bubblesortButton, selectionsortButton, insertionsortButton, shellsortButton])
-    }
+        colorCheckbox.addEventListener("change", () => {
+            colors = !colors
+            renderBars(numbers)
+        })
 
-    colorCheckbox.addEventListener('change', () => {
-        colors = !colors
-        printBars("bars", numbers)
-    })
+        searchSoundCheckbox.addEventListener("change", () => {
+            searchSoundEnabled = searchSoundCheckbox.checked
+            if (searchSoundEnabled) {
+                ensureAudioContext()
+            }
+        })
 
-    bubbleWorker.addEventListener('message', (e) => updatePage(e))
-    selectionWorker.addEventListener('message', (e) => updatePage(e))
-    insertionWorker.addEventListener('message', (e) => updatePage(e))
-    shellWorker.addEventListener('message', (e) => updatePage(e))
+        resetButton.addEventListener("click", () => {
+            cancelCompletionSweep()
+            finished = true
+            checkButtons()
+            localStorage.removeItem("elements")
+            sortWorker.terminate()
+            document.location.reload()
+        })
 
-    resetButton.addEventListener('click', () => {
-        barsMixed = false
-        finished = true
-        checkButtons(barsMixed, mixButton, [bubblesortButton, selectionsortButton, insertionsortButton, shellsortButton])
-        changeElementCount()
-        bubbleWorker.terminate()
-        selectionWorker.terminate()
-        insertionWorker.terminate()
-        shellWorker.terminate()
-        document.location.reload()
-    })
+        sortButtons.forEach((button) => {
+            button.addEventListener("click", () => {
+                startSort(sortWorker, button.dataset.algo, button)
+            })
+        })
+        rangeElements.addEventListener("input", () => {
+            setElementCount(rangeElements.value)
+        })
 
-    bubblesortButton.addEventListener('click', () => {
-        barsMixed = false
-        finished = false
-        bubbleWorker.postMessage(numbers)
-        checkButtons(barsMixed, mixButton, [bubblesortButton, selectionsortButton, insertionsortButton, shellsortButton])
-    })
+        speedRange.addEventListener("input", () => {
+            speedValue.innerText = speedRange.value + "x"
+            updateRangeFill(speedRange)
+        })
 
-    selectionsortButton.addEventListener('click', () => {
-        barsMixed = false
-        finished = false
-        selectionWorker.postMessage(numbers)
-        checkButtons(barsMixed, mixButton, [bubblesortButton, selectionsortButton, insertionsortButton, shellsortButton])
-    })
+        attachWorkerHandlers(sortWorker, "Sort")
 
-    insertionsortButton.addEventListener('click', () => {
-        barsMixed = false
-        finished = false
-        insertionWorker.postMessage(numbers)
-        checkButtons(barsMixed, mixButton, [bubblesortButton, selectionsortButton, insertionsortButton, shellsortButton])
-    })
-
-    shellsortButton.addEventListener('click', () => {
-        barsMixed = false
-        finished = false
-        shellWorker.postMessage(numbers)
-        checkButtons(barsMixed, mixButton, [bubblesortButton, selectionsortButton, insertionsortButton, shellsortButton])
-    })
-
-    mixButton.addEventListener('click', () => {
-        barsMixed = true
-        swapsCounter = 0
-        swapsCounterText.innerText = swapsCounter
-        checkButtons(barsMixed, mixButton, [bubblesortButton, selectionsortButton, insertionsortButton, shellsortButton])
-        mixBars(numbers)
-    })
-
-    elements.addEventListener('input', () => {
-        rangeElements.value = elements.value
-        changeElementCount()
-        addToLocalStorage(elements.value)
-    })
-
-    rangeElements.addEventListener('input', () => {
-        elements.value = rangeElements.value
-        changeElementCount()
-        addToLocalStorage(elements.value)
-    })
-
-    function addToLocalStorage(elem) {
-        localStorage.setItem('elements', elem)
-    }
-
-    function getFromLocalStorage() {
-        let elem = localStorage.getItem('elements')
-        if (elem === null) elem = 400;
-        return parseInt(elem)
-    }
-
-    function changeElementCount() {
-        numbers = []
-        numbers = [...Array(parseInt(elements.value)).keys()]
-        printBars("bars", numbers)
-        barsMixed = false
-        checkButtons(barsMixed, mixButton, [bubblesortButton, selectionsortButton, insertionsortButton, shellsortButton])
-    }
-
-    checkButtons(barsMixed, mixButton, [bubblesortButton, selectionsortButton, insertionsortButton, shellsortButton])
-    elements.value = getFromLocalStorage()
-    printBars("bars", numbers)
-
-</script>
+        rangeElements.max = String(MAX_ELEMENTS)
+        speedValue.innerText = speedRange.value + "x"
+        setElementCount(getFromLocalStorage())
+        updateRangeFill(speedRange)
+        swapText.innerText = "finished"
+    </script>
 </body>
 
 </html>
